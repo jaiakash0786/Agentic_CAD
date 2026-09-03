@@ -1,0 +1,35 @@
+# FastAPI Backend
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+python-dotenv==1.1.0
+python-multipart==0.0.20
+
+# Pydantic
+pydantic==2.11.3
+
+# LLM
+groq==0.25.0
+
+# CAD Engine
+cadquery==2.4.0
+
+# Meshing
+gmsh==4.13.1
+
+# Scientific Computing
+numpy==2.2.6
+scipy==1.15.3
+matplotlib==3.10.3
+
+# 3D Processing
+open3d==0.18.0
+trimesh==4.6.8
+
+# Report Generation
+reportlab==4.4.0
+
+# CORS
+aiofiles==24.1.0
+
+# Websockets (for real-time pipeline updates)
+websockets==15.0.1
