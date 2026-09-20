@@ -1,0 +1,86 @@
+# AI-Driven Engineering Design Automation Platform — Task Tracker
+
+## Phase 1: Foundation & Data Models
+- `[x]` Fix PowerShell execution policy for npm
+- `[x]` Create project directory structure (9 packages created)
+- `[x]` Create `.env` with Groq API key (qwen/qwen3.8-27b model)
+- `[x]` Create `requirements.txt`
+- `[x]` Create Pydantic data models (`specification.py`, `materials.py`, `results.py`, `optimization.py`)
+- `[x]` Create FastAPI skeleton (`main.py`, `config.py`)
+- `[x]` Install Python dependencies (40+ packages)
+- `[x]` Test: Import models and create sample specification ✓
+
+## Phase 2: AI Interpreter + Validator
+- `[x]` Create LLM client (`llm_client.py`) — Groq API with JSON fallback
+- `[x]` Create prompt templates (`prompt_templates.py`) — unit conversion rules
+- `[x]` Create NL parser (`parser.py`) — NL → Pydantic spec
+- `[x]` Create validation rules (`rules.py`) — 12 physics checks
+- `[x]` Create completeness checker (`completeness.py`) — ✓/✗ checklist
+- `[x]` Create validator orchestrator (`validator.py`)
+- `[x]` Add API endpoints (in main.py)
+- `[x]` Test: NL → validated spec ✓ ("5 kN L-bracket" → all checks passed)
+
+## Phase 3: Parametric CAD Generator
+- `[x]` Create base template (abstract class)
+- `[x]` Create L-bracket template (80KB STEP, 50KB STL)
+- `[x]` Create beam/plate/mounting bracket templates (all working)
+- `[x]` Create generator (template registry) + exporter (STEP/STL)
+- `[x]` Install CadQuery 2.8.0 via pip ✓
+- `[x]` Test: Spec → STEP/STL files ✓ (4 templates verified)
+
+## Phase 4: FEA Pipeline
+- `[x]` Install CalculiX binary (Python fallback available; ccx optional)
+- `[x]` Create mesher (Gmsh) — 1230 nodes, 3837 C3D4 elements on L-bracket
+- `[x]` Create .inp generator — full CalculiX input deck
+- `[x]` Create solver runner — CalculiX + Python fallback (bar-element direct stiffness)
+- `[x]` Create result parser — .frd + .dat parser, von Mises computation
+- `[x]` Create analyzer — SF, strain, mass, constraint checks
+- `[x]` Add API endpoint (/api/run-fea with FEARequest/FEAResponse)
+- `[x]` Test: CAD -> FEA results (1230 nodes, 3837 elements, mass=0.1626 kg) [ALL ASSERTIONS PASSED]
+
+## Phase 5: Closed-Loop Orchestrator
+- `[x]` Create pipeline coordinator (orchestrator/pipeline.py) — full async pipeline
+- `[x]` Create design loop engine (orchestrator/design_loop.py) — thickness/dim modification strategy
+- `[x]` Create state manager (orchestrator/state_manager.py) — WebSocket broadcast
+- `[x]` Add API endpoints + WebSocket (/api/run-pipeline, /api/pipeline-status, /ws/pipeline/{id}, /api/pipelines)
+- `[x]` Fix Gmsh threading (signal.signal must run on main thread — removed run_in_executor)
+- `[x]` Test: 3-iteration loop — SF improved 0.32→0.63, disp 0.44→0.27mm [ALL ASSERTIONS PASSED]
+
+## Phase 6: Topology Optimization
+- `[ ]` Implement SIMP algorithm
+- `[ ]` Implement sensitivity analysis
+- `[ ]` Implement density filters
+- `[ ]` Create optimization controller
+- `[ ]` Test: Density field convergence
+
+## Phase 7: CAD Reconstruction + Validation
+- `[ ]` Surface extraction (marching cubes)
+- `[ ]` Mesh cleaning
+- `[ ]` CAD rebuild → STL
+- `[ ]` Validation FEA
+- `[ ]` Test: Optimized mesh → clean STL
+
+## Phase 8: React Frontend
+- `[ ]` Initialize Vite + React
+- `[ ]` Design system (index.css)
+- `[ ]` RequirementInput component
+- `[ ]` ParameterForm component
+- `[ ]` ValidationPanel component
+- `[ ]` ModelViewer (Three.js)
+- `[ ]` ResultsPanel
+- `[ ]` OptimizationHistory
+- `[ ]` HumanReview
+- `[ ]` PipelineStatus
+- `[ ]` Test: Full UI flow
+
+## Phase 9: Report Generation
+- `[ ]` PDF report generator
+- `[ ]` Optimization charts
+- `[ ]` API endpoint
+- `[ ]` Test: Generate PDF
+
+## Phase 10: Integration & Polish
+- `[ ]` End-to-end test
+- `[ ]` Error handling
+- `[ ]` UX polish
+- `[ ]` Final demo

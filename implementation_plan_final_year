@@ -1,0 +1,527 @@
+# AI-Driven Engineering Design Automation Platform — Full Implementation Plan
+
+Build the complete Agentic CAD pipeline from scratch in `d:\finalyear`, covering all 15 steps from natural language requirement to final validated CAD export.
+
+---
+
+## Tech Stack Decisions
+
+| Layer | Technology | Reason |
+|-------|-----------|--------|
+| **Frontend** | React + Vite + Three.js (react-three-fiber) | Modern, fast, 3D STL viewing in browser |
+| **Backend API** | FastAPI (Python) | Async, auto-docs, tight fit with all Python CAD/FEA tools |
+| **LLM** | Groq API (Llama 3 / Mixtral) | Free tier, fast, you've used it before |
+| **Validation** | Pydantic v2 | Deterministic schema validation |
+| **CAD Engine** | CadQuery | Pure Python, no GUI, exports STEP/STL |
+| **Meshing** | Gmsh (official Python API) | Industry standard, parametric mesh control |
+| **FEA Solver** | CalculiX (`ccx`) | Free, robust, Windows binaries available |
+| **Topology Opt** | Custom SIMP (NumPy/SciPy) | Based on DTU TopOpt 88-line code, educational + demonstrable |
+| **Reconstruction** | Open3D + SciPy | Surface extraction from density field |
+| **3D Viewer** | STLLoader via react-three-fiber | Native STL support in browser |
+| **Report** | ReportLab / Matplotlib | PDF generation with charts |
+
+---
+
+## Project Structure
+
+```
+d:\finalyear\
+├── backend/                          # FastAPI Python backend
+│   ├── main.py                       # FastAPI app entry point
+│   ├── requirements.txt              # Python dependencies
+│   ├── config.py                     # API keys, paths, settings
+│   │
+│   ├── models/                       # Pydantic data models
+│   │   ├── __init__.py
+│   │   ├── specification.py          # DesignSpecification schema
+│   │   ├── materials.py              # Material database
+│   │   ├── results.py                # FEA result schemas
+│   │   └── optimization.py           # Optimization config schemas
+│   │
+│   ├── interpreter/                  # AI Requirement Interpreter
+│   │   ├── __init__.py
+│   │   ├── llm_client.py             # Groq/OpenAI LLM wrapper
+│   │   ├── prompt_templates.py       # System prompts for extraction
+│   │   └── parser.py                 # NL → DesignSpecification
+│   │
+│   ├── validator/                    # Engineering Spec Validator
+│   │   ├── __init__.py
+│   │   ├── rules.py                  # Physics/engineering rules
+│   │   ├── completeness.py           # Missing parameter detection
+│   │   └── validator.py              # Main validation orchestrator
+│   │
+│   ├── cad/                          # Parametric CAD Generator
+│   │   ├── __init__.py
+│   │   ├── templates/                # Component template library
+│   │   │   ├── base_template.py      # Abstract base template
+│   │   │   ├── l_bracket.py          # L-Bracket generator
+│   │   │   ├── beam.py               # Beam generator
+│   │   │   ├── plate.py              # Plate generator
+│   │   │   └── mounting_bracket.py   # Mounting bracket generator
+│   │   ├── generator.py              # Template router + CAD builder
+│   │   └── exporter.py               # STEP/STL export utilities
+│   │
+│   ├── fea/                          # FEA Pipeline
+│   │   ├── __init__.py
+│   │   ├── mesher.py                 # Gmsh mesh generation
+│   │   ├── inp_generator.py          # CalculiX .inp file writer
+│   │   ├── solver.py                 # ccx subprocess runner
+│   │   ├── result_parser.py          # .frd/.dat result extraction
+│   │   └── analyzer.py               # Metric extraction (stress, SF, etc.)
+│   │
+│   ├── optimization/                 # Topology Optimization
+│   │   ├── __init__.py
+│   │   ├── simp.py                   # SIMP algorithm implementation
+│   │   ├── sensitivity.py            # Sensitivity analysis
+│   │   ├── filters.py                # Density filters
+│   │   └── controller.py             # Optimization loop controller
+│   │
+│   ├── reconstruction/               # CAD Reconstruction
+│   │   ├── __init__.py
+│   │   ├── surface_extractor.py      # Marching cubes / isosurface
+│   │   ├── mesh_cleaner.py           # Smoothing + simplification
+│   │   └── cad_rebuilder.py          # Mesh → STEP/STL
+│   │
+│   ├── orchestrator/                 # Design Loop Orchestrator
+│   │   ├── __init__.py
+│   │   ├── pipeline.py               # Full pipeline coordinator
+│   │   ├── design_loop.py            # Closed-loop iteration engine
+│   │   └── state_manager.py          # Pipeline state + history tracking
+│   │
+│   ├── report/                       # Report Generation
+│   │   ├── __init__.py
+│   │   ├── generator.py              # PDF report builder
+│   │   └── charts.py                 # Optimization history plots
+│   │
+│   └── output/                       # Generated files directory
+│       ├── cad/                      # STEP/STL files
+│       ├── mesh/                     # Mesh files
+│       ├── fea/                      # FEA input/output
+│       ├── optimization/             # Optimization results
+│       └── reports/                  # PDF reports
+│
+├── frontend/                         # React + Vite frontend
+│   ├── package.json
+│   ├── vite.config.js
+│   ├── index.html
+│   ├── public/
+│   └── src/
+│       ├── main.jsx
+│       ├── App.jsx
+│       ├── App.css
+│       ├── index.css                 # Global design system
+│       ├── api/
+│       │   └── client.js             # Backend API calls
+│       ├── components/
+│       │   ├── Header.jsx
+│       │   ├── RequirementInput.jsx  # NL text input + form
+│       │   ├── ParameterForm.jsx     # Manual parameter entry
+│       │   ├── ValidationPanel.jsx   # Missing param warnings
+│       │   ├── ModelViewer.jsx       # Three.js 3D STL viewer
+│       │   ├── ResultsPanel.jsx      # FEA results display
+│       │   ├── OptimizationHistory.jsx # Iteration chart
+│       │   ├── HumanReview.jsx       # Accept/Modify/Reject
+│       │   └── PipelineStatus.jsx    # Progress tracker
+│       └── utils/
+│           └── formatters.js
+│
+└── tools/                            # External tool binaries
+    └── ccx/                          # CalculiX solver binary
+```
+
+---
+
+## Implementation Phases
+
+### Phase 1: Foundation & Data Models
+> **Goal**: Project scaffolding, Pydantic models, material database, FastAPI skeleton
+
+#### [NEW] backend/models/specification.py
+Central `DesignSpecification` Pydantic model — the contract between all modules:
+- `ComponentType` enum (L_BRACKET, BEAM, PLATE, MOUNTING_BRACKET)
+- `Dimensions` model (length, width, height, thickness, hole_diameter, fillet_radius)
+- `Material` model (name, yield_strength, youngs_modulus, density, poisson_ratio)
+- `Load` model (magnitude, direction, location, type)
+- `BoundaryCondition` model (type, location)
+- `OptimizationConfig` model (objective, volume_fraction, max_iterations)
+- `ValidationConstraints` model (max_displacement, min_safety_factor, max_stress)
+- `MeshSettings` model (element_size, element_type, refinement_level)
+
+#### [NEW] backend/models/materials.py
+Built-in material library with engineering properties:
+- Aluminum 6061-T6
+- Steel AISI 304
+- Titanium Ti-6Al-4V
+- Carbon Steel 1045
+
+#### [NEW] backend/models/results.py
+FEA result schemas:
+- `FEAResult` (max_stress, max_displacement, max_strain, safety_factor, mass, volume)
+- `OptimizationIteration` (iteration_number, results, constraints_satisfied, density_field)
+- `DesignHistory` (list of iterations with pass/fail status)
+
+#### [NEW] backend/main.py
+FastAPI app with CORS, routers, static file serving for generated models.
+
+#### [NEW] backend/config.py
+Configuration: Groq API key, CalculiX path, output directories.
+
+---
+
+### Phase 2: AI Interpreter + Validator
+> **Goal**: Natural language → validated engineering specification
+
+#### [NEW] backend/interpreter/llm_client.py
+Groq API client wrapper:
+- System prompt that instructs LLM to output structured JSON matching the `DesignSpecification` schema
+- Temperature 0 for deterministic output
+- JSON mode enforcement
+
+#### [NEW] backend/interpreter/prompt_templates.py
+Carefully crafted system prompts:
+- Component identification prompt
+- Parameter extraction prompt
+- Unit normalization rules (kN → N, cm → mm)
+
+#### [NEW] backend/interpreter/parser.py
+Orchestrator:
+1. Send NL requirement to LLM
+2. Parse JSON response
+3. Attempt to construct `DesignSpecification` from LLM output
+4. Return parsed spec + any parsing errors
+
+#### [NEW] backend/validator/rules.py
+Engineering validation rules:
+- `thickness > 0`, `load > 0`, `safety_factor > 1`
+- `0 < volume_fraction < 1`
+- Material yield strength > applied stress (sanity check)
+- Geometry ratios (length/thickness < 100 to avoid extreme slenderness)
+
+#### [NEW] backend/validator/completeness.py
+Missing parameter detection:
+- Check all required fields for the component type
+- Generate human-readable checklist (✓/✗)
+- Suggest defaults for non-critical missing params
+
+#### [NEW] backend/validator/validator.py
+Main validator that combines completeness + rules:
+- Returns `ValidationResult` with pass/fail, missing fields, out-of-range warnings
+
+#### FastAPI endpoints:
+- `POST /api/interpret` — NL text → parsed specification
+- `POST /api/validate` — specification → validation result
+
+---
+
+### Phase 3: Parametric CAD Generator
+> **Goal**: Validated spec → 3D CAD model (STEP + STL)
+
+#### [NEW] backend/cad/templates/base_template.py
+Abstract base class:
+- `generate(spec: DesignSpecification) → CadQuery.Workplane`
+- `get_load_faces()` — returns faces where loads apply
+- `get_boundary_faces()` — returns faces where BCs apply
+- `get_required_params()` — returns list of needed dimensions
+
+#### [NEW] backend/cad/templates/l_bracket.py
+L-Bracket parametric template:
+- L-profile sketch → extrude → add mounting holes → fillets
+- Parameters: length, width, height, thickness, hole_diameter, hole_spacing, fillet_radius
+- Face identification for FEA boundary assignment
+
+#### [NEW] backend/cad/templates/beam.py
+Simple rectangular beam with optional holes.
+
+#### [NEW] backend/cad/templates/plate.py
+Flat plate with hole patterns.
+
+#### [NEW] backend/cad/templates/mounting_bracket.py
+U-shaped mounting bracket.
+
+#### [NEW] backend/cad/generator.py
+Template router:
+- Maps `ComponentType` → template class
+- Calls template's `generate()` method
+- Returns CadQuery solid
+
+#### [NEW] backend/cad/exporter.py
+Export utilities:
+- `export_step(solid, path)` — STEP format for engineering
+- `export_stl(solid, path)` — STL for viewer + meshing
+- `export_both(solid, base_path)` — convenience method
+
+#### FastAPI endpoint:
+- `POST /api/generate-cad` — specification → STEP + STL file URLs
+
+---
+
+### Phase 4: FEA Pipeline
+> **Goal**: CAD model → mesh → solve → extract results
+
+#### [NEW] backend/fea/mesher.py
+Gmsh-based meshing:
+- Import STEP geometry into Gmsh
+- Define physical groups for load faces and BC faces
+- Generate tetrahedral mesh with configurable element size
+- Export mesh in CalculiX-compatible format (.inp mesh section)
+
+#### [NEW] backend/fea/inp_generator.py
+CalculiX input deck generator:
+- Write `.inp` file with:
+  - Node/element definitions (from mesh)
+  - Material properties (from specification)
+  - Boundary conditions (fixed nodes at specified faces)
+  - Loads (forces on specified face nodes)
+  - Step definition (static analysis)
+  - Output requests (stress, displacement, reaction forces)
+
+#### [NEW] backend/fea/solver.py
+CalculiX runner:
+- Execute `ccx` via `subprocess`
+- Monitor completion
+- Handle errors/timeouts
+- Return paths to result files
+
+#### [NEW] backend/fea/result_parser.py
+Parse CalculiX output:
+- Read `.frd` file for field results (stress, displacement per node)
+- Read `.dat` file for summary values
+- Extract nodal stress/displacement arrays
+
+#### [NEW] backend/fea/analyzer.py
+Result analysis:
+- Calculate max von Mises stress
+- Calculate max displacement magnitude
+- Calculate max strain
+- Calculate safety factor = yield_strength / max_stress
+- Calculate mass from volume × density
+- Return `FEAResult` Pydantic model
+
+#### FastAPI endpoint:
+- `POST /api/run-fea` — specification + CAD → FEA results JSON
+
+---
+
+### Phase 5: Closed-Loop Orchestrator
+> **Goal**: Chain all modules into an automated design loop
+
+#### [NEW] backend/orchestrator/pipeline.py
+Full pipeline coordinator:
+1. Interpret requirement (Phase 2)
+2. Validate specification (Phase 2)
+3. Generate CAD (Phase 3)
+4. Run FEA (Phase 4)
+5. Analyze results (Phase 4)
+6. Check constraints → PASS/FAIL
+7. If FAIL → trigger optimization (Phase 6)
+8. Track iteration history
+
+#### [NEW] backend/orchestrator/design_loop.py
+Closed-loop engine:
+- Maximum iteration limit (e.g., 10)
+- Convergence detection
+- Parameter modification strategy (increase thickness, change dimensions)
+- State tracking per iteration
+
+#### [NEW] backend/orchestrator/state_manager.py
+Pipeline state management:
+- Current pipeline stage
+- Design history (all iterations)
+- WebSocket updates to frontend for progress tracking
+
+#### FastAPI endpoints:
+- `POST /api/run-pipeline` — full pipeline execution from NL requirement
+- `GET /api/pipeline-status/{id}` — current state + progress
+- `WebSocket /ws/pipeline/{id}` — real-time progress updates
+
+---
+
+### Phase 6: Topology Optimization
+> **Goal**: SIMP-based material distribution optimization
+
+#### [NEW] backend/optimization/simp.py
+SIMP algorithm (based on DTU 88-line code, adapted):
+- Element density array (0→void, 1→solid)
+- Penalization factor (p=3)
+- Compliance minimization OR mass minimization
+- Volume constraint enforcement
+- Optimality criteria (OC) update scheme
+
+#### [NEW] backend/optimization/sensitivity.py
+Sensitivity analysis:
+- Compute dc/dρ for each element
+- Sensitivity filtering (to avoid checkerboard patterns)
+
+#### [NEW] backend/optimization/filters.py
+- Density filter (radius-based neighborhood averaging)
+- Heaviside projection (sharpen 0/1 boundaries)
+
+#### [NEW] backend/optimization/controller.py
+Optimization loop controller:
+- Run SIMP iterations
+- Check convergence (change in objective < tolerance)
+- Apply volume constraint
+- Return optimized density field + iteration history
+
+---
+
+### Phase 7: CAD Reconstruction + Final Validation
+> **Goal**: Optimized density field → clean CAD → validation FEA
+
+#### [NEW] backend/reconstruction/surface_extractor.py
+- Marching cubes on density field (threshold at 0.5)
+- Extract isosurface as triangle mesh
+
+#### [NEW] backend/reconstruction/mesh_cleaner.py
+- Laplacian smoothing
+- Mesh simplification (reduce triangle count)
+- Remove small disconnected components
+
+#### [NEW] backend/reconstruction/cad_rebuilder.py
+- Convert cleaned mesh to STL
+- Optionally fit geometric primitives (planes, cylinders) via RANSAC
+- Export as STEP/STL
+
+#### Validation FEA:
+- Re-run full FEA pipeline on reconstructed geometry
+- Compare results against constraints
+- If FAIL → loop back to optimization with modified constraints
+
+---
+
+### Phase 8: React Frontend
+> **Goal**: Engineer-facing web interface with 3D viewer
+
+#### [NEW] frontend/ (Vite + React)
+Initialize with `npx create-vite@latest ./ --template react`
+
+#### [NEW] frontend/src/index.css
+Design system:
+- Dark theme (matching your architecture diagrams)
+- CSS custom properties for colors, spacing, typography
+- Inter/Outfit font from Google Fonts
+- Glassmorphism card styles
+- Animation keyframes
+
+#### [NEW] frontend/src/components/RequirementInput.jsx
+- Large text area for natural language input
+- "Interpret" button → calls `/api/interpret`
+- Shows AI-parsed parameters in editable form
+
+#### [NEW] frontend/src/components/ParameterForm.jsx
+- Manual parameter entry (component type, dimensions, material, loads, BCs)
+- Dropdowns for enums (material, component type)
+- Numeric inputs with unit labels
+
+#### [NEW] frontend/src/components/ValidationPanel.jsx
+- Shows validation checklist (✓/✗ for each parameter)
+- Highlights missing/invalid parameters
+- "Fix" suggestions
+
+#### [NEW] frontend/src/components/ModelViewer.jsx
+- Three.js 3D viewer using `@react-three/fiber` + `@react-three/drei`
+- Load STL from backend
+- Orbit controls, zoom, grid
+- Color-coded stress visualization (when FEA results available)
+
+#### [NEW] frontend/src/components/ResultsPanel.jsx
+- FEA results table (stress, displacement, strain, SF, mass)
+- Pass/fail indicators with color coding
+- Comparison table across iterations
+
+#### [NEW] frontend/src/components/OptimizationHistory.jsx
+- Line/bar chart showing metric evolution across iterations
+- Mass, stress, displacement, safety factor over time
+
+#### [NEW] frontend/src/components/HumanReview.jsx
+- Accept / Modify / Reject buttons
+- Text input for engineer feedback
+- "Modify" sends feedback → new constraint → re-optimization
+
+#### [NEW] frontend/src/components/PipelineStatus.jsx
+- Step-by-step progress indicator (15 steps)
+- Current step highlighted
+- Estimated time per step
+
+---
+
+### Phase 9: Report Generation
+> **Goal**: Complete engineering report with optimization history
+
+#### [NEW] backend/report/generator.py
+PDF report containing:
+- Input specification summary
+- CAD model screenshots (rendered STL views)
+- FEA results for each iteration
+- Optimization history chart
+- Final design metrics
+- Pass/fail validation summary
+
+#### [NEW] backend/report/charts.py
+Matplotlib charts:
+- Stress convergence plot
+- Displacement convergence plot
+- Safety factor evolution
+- Mass reduction history
+- Topology density evolution
+
+#### FastAPI endpoint:
+- `GET /api/report/{pipeline_id}` — download PDF report
+
+---
+
+### Phase 10: Integration & Polish
+> **Goal**: End-to-end testing, error handling, UX polish
+
+- End-to-end pipeline test: "Design an aluminum L-bracket supporting 5 kN..."
+- Error handling throughout all modules
+- Loading states and progress feedback in UI
+- WebSocket real-time updates
+- Edge case handling (solver failures, non-convergent optimization)
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **LLM Provider**: I'm defaulting to **Groq** (free, fast, you've used it before). If you have an OpenAI API key or prefer another provider, let me know.
+
+> [!IMPORTANT]
+> **CalculiX Binary**: We need the CalculiX (`ccx`) Windows binary. I'll download it from the community builds (SourceForge or GitHub). This is the FEA solver — without it, we can't run structural analysis.
+
+> [!WARNING]
+> **CadQuery on Windows**: CadQuery works best with Conda. If you don't have Conda/Miniforge installed, we may need to set that up first, or try the pip installation (which sometimes has dependency issues on Windows).
+
+## Open Questions
+
+> [!IMPORTANT]
+> 1. **Do you have a Groq API key** (from your previous chatbot project), or should we create a new one?
+> 2. **Do you have Python installed** and which version? (We need 3.10+)
+> 3. **Do you have Node.js installed** for the React frontend?
+> 4. **Do you have Conda/Miniforge** installed, or should we try pip for CadQuery?
+> 5. **Shall I start with Phase 1 immediately** after your approval, or do you want to adjust the plan first?
+
+---
+
+## Verification Plan
+
+### Automated Tests
+After each phase, I'll run validation:
+
+| Phase | Test |
+|-------|------|
+| 1 | Import all Pydantic models, create sample specs, serialize/deserialize |
+| 2 | Send sample NL requirement → get valid spec + validation report |
+| 3 | Generate L-bracket CAD → verify STEP/STL files exist and are non-empty |
+| 4 | Mesh + FEA on sample bracket → extract stress/displacement numbers |
+| 5 | Run full pipeline → verify iteration history + convergence |
+| 6 | Run SIMP optimization → verify density field converges |
+| 7 | Reconstruct optimized mesh → verify clean STL output |
+| 8 | Frontend loads, renders 3D model, shows results |
+| 9 | PDF report generates with correct data |
+| 10 | End-to-end: NL → validated optimized CAD + report |
+
+### Manual Verification
+- Visual inspection of 3D models in the browser viewer
+- Engineering sanity check on FEA results (stress values in expected range)
+- Report readability and completeness

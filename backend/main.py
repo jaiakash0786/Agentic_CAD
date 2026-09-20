@@ -19,7 +19,7 @@ Architecture:
 """
 import uuid
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -87,6 +87,29 @@ class CADGenerateResponse(BaseModel):
     success: bool = True
     step_file_url: Optional[str] = None
     stl_file_url: Optional[str] = None
+    error: Optional[str] = None
+
+
+class FEARequest(BaseModel):
+    """Request to run FEA on a specification."""
+    specification: DesignSpecification
+    step_file_path: Optional[str] = Field(
+        None, description="Path to existing STEP file. If None, CAD is auto-generated."
+    )
+    job_id: Optional[str] = Field(None, description="Job ID for tracking. Auto-generated if None.")
+
+
+class FEAResponse(BaseModel):
+    """FEA pipeline result."""
+    success: bool = True
+    job_id: Optional[str] = None
+    fea_result: Optional[FEAResult] = None
+    constraint_checks: list[dict] = Field(default_factory=list)
+    all_constraints_passed: bool = False
+    mesh_info: Optional[dict] = None
+    solver_info: Optional[dict] = None
+    inp_path: Optional[str] = None
+    frd_path: Optional[str] = None
     error: Optional[str] = None
 
 
@@ -188,15 +211,78 @@ async def generate_cad(request: CADGenerateRequest):
 
 # ─── FEA ─────────────────────────────────────────────────────
 
-@app.post("/api/run-fea")
-async def run_fea(request: CADGenerateRequest):
-    """Run FEA analysis on a specification (generates CAD → mesh → solve)."""
+@app.post("/api/run-fea", response_model=FEAResponse)
+async def run_fea(request: FEARequest):
+    """
+    Run the complete FEA pipeline on a design specification.
+
+    If step_file_path is provided, uses that STEP file.
+    Otherwise, generates CAD first via the CAD generator.
+
+    Pipeline:
+      1. Generate CAD (if no STEP provided)
+      2. Gmsh mesh generation
+      3. CalculiX .inp generation
+      4. Run solver (CalculiX or Python fallback)
+      5. Parse .frd results
+      6. Compute FEAResult + constraint checks
+    """
+    from pathlib import Path as P
     try:
-        from orchestrator.pipeline import run_fea_pipeline
-        result = await run_fea_pipeline(request.specification)
-        return {"success": True, "result": result}
+        spec = request.specification
+        step_path = None
+
+        # Step A: Get or generate STEP file
+        if request.step_file_path:
+            step_path = P(request.step_file_path)
+            if not step_path.exists():
+                return FEAResponse(
+                    success=False,
+                    error=f"STEP file not found: {request.step_file_path}"
+                )
+        else:
+            # Auto-generate CAD
+            from cad.generator import generate_cad_model
+            step_path_str, _ = generate_cad_model(spec)
+            step_path = P(step_path_str)
+
+        # Step B: Run FEA pipeline synchronously (Gmsh needs main thread)
+        from fea.pipeline import run_fea_pipeline
+        pipeline_result = run_fea_pipeline(
+            spec=spec,
+            step_path=step_path,
+            job_id=request.job_id,
+        )
+
+        # Serialize constraint checks
+        checks_serialized = [
+            {
+                "name": c.name,
+                "required_value": c.required_value,
+                "actual_value": c.actual_value,
+                "passed": c.passed,
+                "unit": c.unit,
+                "comparison": c.comparison,
+            }
+            for c in pipeline_result["constraint_checks"]
+        ]
+
+        return FEAResponse(
+            success=True,
+            job_id=pipeline_result["job_id"],
+            fea_result=pipeline_result["fea_result"],
+            constraint_checks=checks_serialized,
+            all_constraints_passed=pipeline_result["all_passed"],
+            mesh_info=pipeline_result["mesh_data"],
+            solver_info=pipeline_result["solver_info"],
+            inp_path=pipeline_result["inp_path"],
+            frd_path=pipeline_result.get("frd_path"),
+        )
+
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        import traceback
+        tb = traceback.format_exc()
+        return FEAResponse(success=False, error=f"{str(e)}\n{tb}")
 
 
 # ─── Full Pipeline ───────────────────────────────────────────
@@ -209,6 +295,7 @@ async def run_pipeline(request: PipelineRequest):
     """
     pipeline_id = str(uuid.uuid4())[:8]
     try:
+        # pyrefly: ignore [missing-import]
         from orchestrator.pipeline import run_full_pipeline
         state = await run_full_pipeline(
             pipeline_id=pipeline_id,
@@ -225,6 +312,74 @@ async def run_pipeline(request: PipelineRequest):
                 error=str(e),
             )
         )
+
+
+# ─── Pipeline Status ──────────────────────────────────────────────
+
+@app.get("/api/pipeline-status/{pipeline_id}", response_model=PipelineState)
+async def get_pipeline_status(pipeline_id: str):
+    """Get the current state of a running or completed pipeline."""
+    from orchestrator.state_manager import pipeline_state_manager
+    state = pipeline_state_manager.get(pipeline_id)
+    if state is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pipeline '{pipeline_id}' not found."
+        )
+    return state
+
+
+@app.get("/api/pipelines")
+async def list_pipelines():
+    """List all known pipeline IDs and their current stages."""
+    from orchestrator.state_manager import pipeline_state_manager
+    all_states = pipeline_state_manager.get_all()
+    return [
+        {
+            "pipeline_id": pid,
+            "stage": s.stage.value,
+            "progress_percent": s.progress_percent,
+            "message": s.message,
+        }
+        for pid, s in all_states.items()
+    ]
+
+
+# ─── WebSocket: Real-time Pipeline Updates ───────────────────────────
+
+@app.websocket("/ws/pipeline/{pipeline_id}")
+async def ws_pipeline(websocket: WebSocket, pipeline_id: str):
+    """
+    WebSocket endpoint for real-time pipeline progress.
+    Connect: ws://localhost:8000/ws/pipeline/{pipeline_id}
+    Receives JSON at each stage change.
+    """
+    from orchestrator.state_manager import pipeline_state_manager
+    await websocket.accept()
+
+    async def _send(payload: str):
+        await websocket.send_text(payload)
+
+    pipeline_state_manager.register_ws(pipeline_id, _send)
+
+    # Send current state immediately on connect
+    import json
+    state = pipeline_state_manager.get(pipeline_id)
+    if state:
+        await websocket.send_text(json.dumps({
+            "pipeline_id": state.pipeline_id,
+            "stage": state.stage.value,
+            "progress_percent": state.progress_percent,
+            "message": state.message,
+        }))
+
+    try:
+        while True:
+            await websocket.receive_text()  # keep-alive
+    except WebSocketDisconnect:
+        pass
+    finally:
+        pipeline_state_manager.unregister_ws(pipeline_id, _send)
 
 
 # ─── File Serving ────────────────────────────────────────────
