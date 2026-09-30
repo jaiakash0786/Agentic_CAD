@@ -31,6 +31,7 @@ class FEAResult(BaseModel):
     max_displacement_mm: float = Field(..., description="Maximum displacement magnitude in mm")
     max_strain: float = Field(..., description="Maximum equivalent strain")
     safety_factor: float = Field(..., description="Yield strength / max stress")
+    yield_strength_mpa: float = Field(default=0.0, description="Material yield strength in MPa")
     mass_kg: float = Field(..., description="Component mass in kg")
     volume_mm3: float = Field(..., description="Component volume in mm³")
     num_elements: int = Field(default=0, description="Number of mesh elements")
