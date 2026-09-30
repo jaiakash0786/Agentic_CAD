@@ -285,6 +285,96 @@ async def run_fea(request: FEARequest):
         return FEAResponse(success=False, error=f"{str(e)}\n{tb}")
 
 
+# ─── Topology Optimization ────────────────────────────────
+
+class TopologyRequest(BaseModel):
+    """Request to run SIMP topology optimization."""
+    specification: DesignSpecification
+    step_file_path: Optional[str] = Field(None, description="Path to STEP file. Auto-generated if None.")
+    job_id: Optional[str] = Field(None, description="Job ID. Auto-generated if None.")
+    volume_fraction: float = Field(0.4, ge=0.1, le=0.9, description="Target volume fraction.")
+    penalty: float = Field(3.0, ge=1.0, le=5.0, description="SIMP penalty exponent.")
+    max_iter: int = Field(40, ge=5, le=100, description="Max optimization iterations.")
+
+
+class TopologyResponse(BaseModel):
+    """SIMP topology optimization result."""
+    success: bool = True
+    job_id: Optional[str] = None
+    converged: bool = False
+    iterations: int = 0
+    compliance: float = 0.0
+    volume_fraction: float = 0.0
+    solid_elements: int = 0
+    total_elements: int = 0
+    material_saved_pct: float = 0.0
+    density_path: Optional[str] = None
+    stl_path: Optional[str] = None
+    csv_path: Optional[str] = None
+    history: list[dict] = Field(default_factory=list)
+    elapsed_s: float = 0.0
+    error: Optional[str] = None
+
+
+@app.post("/api/optimize", response_model=TopologyResponse)
+async def run_optimize(request: TopologyRequest):
+    """
+    Run SIMP topology optimization on a design specification.
+    Removes unnecessary material while maintaining structural integrity.
+
+    Pipeline:
+      1. Generate CAD (if no STEP provided)
+      2. Gmsh mesh generation
+      3. SIMP optimization loop (penalty=3, OC update, sensitivity filter)
+      4. Save density field (.npy + CSV)
+      5. Generate density-coloured preview STL
+    """
+    from pathlib import Path as P
+    try:
+        spec = request.specification
+        step_path = None
+
+        if request.step_file_path:
+            step_path = P(request.step_file_path)
+            if not step_path.exists():
+                return TopologyResponse(success=False, error=f"STEP file not found: {request.step_file_path}")
+        else:
+            from cad.generator import generate_cad_model
+            step_str, _ = generate_cad_model(spec)
+            step_path = P(step_str)
+
+        from optimization.pipeline import run_topology_pipeline
+        result = run_topology_pipeline(
+            spec=spec,
+            step_path=step_path,
+            job_id=request.job_id,
+            volume_fraction=request.volume_fraction,
+            penalty=request.penalty,
+            max_iter=request.max_iter,
+        )
+
+        return TopologyResponse(
+            success=True,
+            job_id=result["job_id"],
+            converged=result["converged"],
+            iterations=result["iterations"],
+            compliance=result["compliance"],
+            volume_fraction=result["volume_fraction"],
+            solid_elements=result["solid_elements"],
+            total_elements=result["total_elements"],
+            material_saved_pct=result["material_saved_pct"],
+            density_path=result["density_path"],
+            stl_path=result["stl_path"],
+            csv_path=result["csv_path"],
+            history=result["history"],
+            elapsed_s=result["elapsed_s"],
+        )
+
+    except Exception as e:
+        import traceback
+        return TopologyResponse(success=False, error=f"{str(e)}\n{traceback.format_exc()}")
+
+
 # ─── Full Pipeline ───────────────────────────────────────────
 
 @app.post("/api/run-pipeline", response_model=PipelineResponse)
@@ -380,6 +470,186 @@ async def ws_pipeline(websocket: WebSocket, pipeline_id: str):
         pass
     finally:
         pipeline_state_manager.unregister_ws(pipeline_id, _send)
+
+
+# ─── Report Generation ──────────────────────────────────────────
+
+class ReportRequest(BaseModel):
+    """Request to generate a PDF engineering report."""
+    specification: DesignSpecification
+    fea_result: Optional[FEAResult] = Field(None, description="FEA results to include")
+    topo_result: Optional[dict] = Field(None, description="Topology results dict to include")
+    job_id: Optional[str] = Field(None, description="Job ID for filename. Auto-generated if None.")
+
+
+class ReportResponse(BaseModel):
+    """Report generation result."""
+    success: bool = True
+    report_url: Optional[str] = None
+    filename: Optional[str] = None
+    error: Optional[str] = None
+
+
+@app.post("/api/report", response_model=ReportResponse)
+async def generate_report(request: ReportRequest):
+    """
+    Generate a PDF engineering report from specification + FEA + topology results.
+
+    Returns a download URL for the generated PDF.
+    """
+    import uuid as _uuid
+    from config import REPORT_OUTPUT_DIR
+    try:
+        from report.generator import generate_report as _gen
+
+        job_id   = request.job_id or _uuid.uuid4().hex[:8]
+        filename = f"report_{job_id}.pdf"
+        out_path = REPORT_OUTPUT_DIR / filename
+
+        spec_dict = request.specification.model_dump()
+        fea_dict  = request.fea_result.model_dump() if request.fea_result else None
+        topo_dict = request.topo_result or None
+
+        _gen(
+            spec_dict=spec_dict,
+            fea_dict=fea_dict,
+            topo_dict=topo_dict,
+            output_path=out_path,
+        )
+
+        return ReportResponse(
+            success=True,
+            report_url=f"/files/reports/{filename}",
+            filename=filename,
+        )
+
+    except Exception as e:
+        import traceback
+        return ReportResponse(success=False, error=f"{str(e)}\n{traceback.format_exc()}")
+
+
+
+# ─── AI Design Chatbot ──────────────────────────────────────────
+
+class ChatMessage(BaseModel):
+    role: str = Field(..., description="'user' or 'assistant'")
+    content: str
+
+class ChatRequest(BaseModel):
+    """Conversational chat request with optional design context."""
+    messages: list[ChatMessage] = Field(..., description="Conversation history")
+    specification: Optional[DesignSpecification] = None
+    fea_result: Optional[FEAResult] = None
+    topo_result: Optional[dict] = None
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    success: bool = True
+    error: Optional[str] = None
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def design_chat(request: ChatRequest):
+    """
+    AI chatbot that answers questions about the current design results.
+    Injects FEA + topology context into the system prompt so the model
+    can answer precise engineering questions about THIS specific design.
+    """
+    try:
+        from groq import Groq
+        from config import GROQ_API_KEY, GROQ_MODEL
+
+        # ── Build context string from available results ───────────────────
+        ctx_parts: list[str] = []
+
+        if request.specification:
+            s = request.specification
+            ctx_parts.append(
+                f"COMPONENT: {s.component} | MATERIAL: {s.material_name} | "
+                f"MIN SAFETY FACTOR REQUIRED: {s.constraints.min_safety_factor} | "
+                f"MAX DISPLACEMENT ALLOWED: {s.constraints.max_displacement_mm}mm"
+            )
+            if s.dimensions:
+                d = s.dimensions
+                ctx_parts.append(
+                    f"DIMENSIONS: length={getattr(d,'length','-')}mm, "
+                    f"width={getattr(d,'width','-')}mm, "
+                    f"height={getattr(d,'height','-')}mm, "
+                    f"thickness={getattr(d,'thickness','-')}mm"
+                )
+            for ld in (s.loads or []):
+                ctx_parts.append(f"LOAD: {ld.magnitude}N {ld.direction} at {ld.location}")
+            for bc in (s.boundary_conditions or []):
+                ctx_parts.append(f"BC: {bc.bc_type} at {bc.location}")
+
+        if request.fea_result:
+            f = request.fea_result
+            ctx_parts.append(
+                f"FEA RESULTS: max_stress={f.max_stress_mpa:.2f}MPa, "
+                f"max_displacement={f.max_displacement_mm:.4f}mm, "
+                f"safety_factor={f.safety_factor:.3f}, "
+                f"yield_strength={f.yield_strength_mpa:.0f}MPa, "
+                f"mass={f.mass_kg:.4f}kg, volume={f.volume_mm3:.1f}mm³, "
+                f"mesh={f.num_nodes}nodes/{f.num_elements}elements"
+            )
+            sf = f.safety_factor
+            ctx_parts.append(
+                f"CONSTRAINT STATUS: SF {'PASS' if sf>=2 else 'FAIL'} (req ≥2.0), "
+                f"Displacement {'PASS' if f.max_displacement_mm<1 else 'FAIL'} (req <1mm), "
+                f"Stress {'PASS' if f.max_stress_mpa<f.yield_strength_mpa else 'FAIL'}"
+            )
+
+        if request.topo_result:
+            t = request.topo_result
+            ctx_parts.append(
+                f"TOPOLOGY OPT: {t.get('iterations',0)} iterations, "
+                f"converged={t.get('converged',False)}, "
+                f"compliance={t.get('compliance',0):.4f}, "
+                f"material_saved={t.get('material_saved_pct',0):.1f}%, "
+                f"solid={t.get('solid_elements',0)}/{t.get('total_elements',0)} elements"
+            )
+
+        context_block = "\n".join(ctx_parts) if ctx_parts else "No design results available yet."
+
+        system_prompt = f"""You are an expert structural engineering AI assistant embedded in the Agentic CAD platform.
+You help engineers understand their FEA and topology optimization results in plain English.
+
+CURRENT DESIGN CONTEXT:
+{context_block}
+
+Guidelines:
+- Answer concisely and precisely using the numbers from the design context above.
+- If asked about safety factor, stress, displacement, or mass — use the exact values above.
+- Explain WHY a result is good/bad using engineering principles.
+- If the design fails a constraint, explain the physical reason and suggest a fix.
+- For topology optimization questions, explain what the compliance/volume fraction means.
+- Keep answers to 2-4 sentences unless asked for more detail.
+- Do NOT make up numbers not in the context above."""
+
+        client = Groq(api_key=GROQ_API_KEY)
+        messages = [{"role": "system", "content": system_prompt}]
+        for m in request.messages:
+            messages.append({"role": m.role, "content": m.content})
+
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=messages,
+            temperature=0.4,
+            max_tokens=512,
+        )
+        reply = response.choices[0].message.content.strip()
+        return ChatResponse(reply=reply)
+
+    except Exception as e:
+        import traceback
+        err_detail = traceback.format_exc()
+        logger.error("Chat endpoint error: %s", err_detail)
+        return ChatResponse(
+            success=False,
+            error=str(e),
+            reply=f"Sorry, I ran into an error: {str(e)}"
+        )
 
 
 # ─── File Serving ────────────────────────────────────────────

@@ -45,6 +45,23 @@ _LOCATION_ALIASES: dict[str, str] = {
     "downward": "end_face",   # ambiguous, mapped conservatively
     "upper": "top_face",
     "lower": "bottom_face",
+    # ── hole / mounting aliases ──────────────────────────────────────
+    "holes": "holes",
+    "mounting_holes": "holes",
+    "mounting_hole": "holes",
+    "bolt_holes": "holes",
+    "screw_holes": "holes",
+    "hole": "holes",
+    "fastener_holes": "holes",
+    "fixing_holes": "holes",
+    # ── base / mount surface ─────────────────────────────────────────
+    "mounting_face": "bottom_face",
+    "mount_face": "bottom_face",
+    "mounting_surface": "bottom_face",
+    "fixed_face": "bottom_face",
+    "clamped_face": "bottom_face",
+    "support": "bottom_face",
+    "wall": "bottom_face",
 }
 
 
@@ -189,16 +206,20 @@ class GmshMesher:
             bbox_max = tuple(bbox_max_all)
             logger.info("Bounding box: min=%s  max=%s", bbox_min, bbox_max)
 
+            # Adaptively ensure element size doesn't create 50k+ elements for Python solver
+            max_span = max(abs(bbox_max[i] - bbox_min[i]) for i in range(3)) if bbox_max[0] > -1e8 else 100.0
+            eff_element_size = max(self.element_size, max_span / 25.0)
+
             # 3. Mesh settings
-            gmsh.option.setNumber("Mesh.CharacteristicLengthMin", self.element_size * 0.5)
-            gmsh.option.setNumber("Mesh.CharacteristicLengthMax", self.element_size)
+            gmsh.option.setNumber("Mesh.CharacteristicLengthMin", eff_element_size * 0.5)
+            gmsh.option.setNumber("Mesh.CharacteristicLengthMax", eff_element_size)
             gmsh.option.setNumber("Mesh.ElementOrder", self.element_order)
             gmsh.option.setNumber("Mesh.Algorithm3D", 1)  # Delaunay 3D
             gmsh.option.setNumber("Mesh.Optimize", 1)
 
             # 4. Generate mesh
             logger.info("Generating 3D mesh (element size=%.1f mm, order=%d)…",
-                        self.element_size, self.element_order)
+                        eff_element_size, self.element_order)
             gmsh.model.mesh.generate(3)
             gmsh.model.mesh.optimize("Netgen")
 
@@ -244,7 +265,9 @@ class GmshMesher:
 
             # Fallback: if nothing matched, use extreme faces
             if not load_surface_tags:
-                logger.warning("No load surfaces matched (%s). Using end_face fallback.", load_locs_norm)
+                logger.warning(
+                    "No load surfaces matched %s. Using top/end-face fallback.", load_locs_norm
+                )
                 for _, stag in surfaces:
                     xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.getBoundingBox(2, stag)
                     cx = (xmin + xmax) / 2
@@ -252,11 +275,19 @@ class GmshMesher:
                         load_surface_tags.append(stag)
 
             if not bc_surface_tags:
-                logger.warning("No BC surfaces matched (%s). Using bottom_face fallback.", bc_locs_norm)
+                # For hole-type locations (mounting_holes etc.), the physical mounting
+                # surface is the bottom/base face — use that as the correct fallback.
+                hole_requested = any(t in ("holes", "mounting_holes", "mounting_face")
+                                     for t in bc_locs_norm)
+                logger.warning(
+                    "No BC surfaces matched %s. Using %s fallback.",
+                    bc_locs_norm,
+                    "bottom_face (mounting base)" if hole_requested else "bottom_face",
+                )
                 for _, stag in surfaces:
                     xmin, ymin, zmin, xmax, ymax, zmax = gmsh.model.getBoundingBox(2, stag)
                     cz = (zmin + zmax) / 2
-                    if abs(cz - bbox_min[2]) < 0.1 * (bbox_max[2] - bbox_min[2]):
+                    if abs(cz - bbox_min[2]) < 0.15 * (bbox_max[2] - bbox_min[2]):
                         bc_surface_tags.append(stag)
 
             logger.info("Load surfaces: %s  |  BC surfaces: %s",

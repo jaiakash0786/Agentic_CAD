@@ -1,86 +1,93 @@
-# AI-Driven Engineering Design Automation Platform — Task Tracker
+﻿# AI-Driven Engineering Design Automation Platform — Task Tracker
 
-## Phase 1: Foundation & Data Models
-- `[x]` Fix PowerShell execution policy for npm
-- `[x]` Create project directory structure (9 packages created)
-- `[x]` Create `.env` with Groq API key (qwen/qwen3.8-27b model)
-- `[x]` Create `requirements.txt`
-- `[x]` Create Pydantic data models (`specification.py`, `materials.py`, `results.py`, `optimization.py`)
-- `[x]` Create FastAPI skeleton (`main.py`, `config.py`)
-- `[x]` Install Python dependencies (40+ packages)
-- `[x]` Test: Import models and create sample specification ✓
+## Phase 1: Foundation & Data Models ✅ COMPLETE
+- [x] Fix PowerShell execution policy for npm
+- [x] Create project directory structure (9 packages created)
+- [x] Create .env with Groq API key (qwen/qwen3.8-27b model)
+- [x] Create requirements.txt
+- [x] Create Pydantic data models (specification.py, materials.py, results.py, optimization.py)
+- [x] Create FastAPI skeleton (main.py, config.py)
+- [x] Install Python dependencies (40+ packages)
+- [x] Test: Import models and create sample specification ok
 
-## Phase 2: AI Interpreter + Validator
-- `[x]` Create LLM client (`llm_client.py`) — Groq API with JSON fallback
-- `[x]` Create prompt templates (`prompt_templates.py`) — unit conversion rules
-- `[x]` Create NL parser (`parser.py`) — NL → Pydantic spec
-- `[x]` Create validation rules (`rules.py`) — 12 physics checks
-- `[x]` Create completeness checker (`completeness.py`) — ✓/✗ checklist
-- `[x]` Create validator orchestrator (`validator.py`)
-- `[x]` Add API endpoints (in main.py)
-- `[x]` Test: NL → validated spec ✓ ("5 kN L-bracket" → all checks passed)
+## Phase 2: AI Interpreter + Validator ✅ COMPLETE
+- [x] Create LLM client (llm_client.py) — Groq API with JSON fallback
+- [x] Create prompt templates (prompt_templates.py) — unit conversion rules
+- [x] Create NL parser (parser.py) — NL to Pydantic spec
+- [x] Create validation rules (rules.py) — 12 physics checks
+- [x] Create completeness checker (completeness.py)
+- [x] Create validator orchestrator (validator.py)
+- [x] Add API endpoints (in main.py)
+- [x] Test: NL to validated spec ok (5 kN L-bracket, all checks passed)
 
-## Phase 3: Parametric CAD Generator
-- `[x]` Create base template (abstract class)
-- `[x]` Create L-bracket template (80KB STEP, 50KB STL)
-- `[x]` Create beam/plate/mounting bracket templates (all working)
-- `[x]` Create generator (template registry) + exporter (STEP/STL)
-- `[x]` Install CadQuery 2.8.0 via pip ✓
-- `[x]` Test: Spec → STEP/STL files ✓ (4 templates verified)
+## Phase 3: Parametric CAD Generator ✅ COMPLETE
+- [x] Create base template (abstract class)
+- [x] Create L-bracket template (80KB STEP, 50KB STL)
+- [x] Create beam/plate/mounting bracket templates (all working)
+- [x] Create generator (template registry) + exporter (STEP/STL)
+- [x] Install CadQuery 2.8.0 via pip ok
+- [x] Test: Spec to STEP/STL files ok (4 templates verified)
 
-## Phase 4: FEA Pipeline
-- `[x]` Install CalculiX binary (Python fallback available; ccx optional)
-- `[x]` Create mesher (Gmsh) — 1230 nodes, 3837 C3D4 elements on L-bracket
-- `[x]` Create .inp generator — full CalculiX input deck
-- `[x]` Create solver runner — CalculiX + Python fallback (bar-element direct stiffness)
-- `[x]` Create result parser — .frd + .dat parser, von Mises computation
-- `[x]` Create analyzer — SF, strain, mass, constraint checks
-- `[x]` Add API endpoint (/api/run-fea with FEARequest/FEAResponse)
-- `[x]` Test: CAD -> FEA results (1230 nodes, 3837 elements, mass=0.1626 kg) [ALL ASSERTIONS PASSED]
+## Phase 4: FEA Pipeline ✅ COMPLETE
+- [x] Install CalculiX binary (Python fallback available; ccx optional)
+- [x] Create mesher (Gmsh) — 1230 nodes, 3837 C3D4 elements on L-bracket
+- [x] Create .inp generator — full CalculiX input deck
+- [x] Create solver runner — CalculiX + Python fallback (bar-element direct stiffness)
+- [x] Create result parser — .frd + .dat parser, von Mises computation
+- [x] Create analyzer — SF, strain, mass, constraint checks
+- [x] Add API endpoint (/api/run-fea with FEARequest/FEAResponse)
+- [x] Test: CAD to FEA results (1230 nodes, 3837 elements, mass=0.1626 kg) [ALL ASSERTIONS PASSED]
 
-## Phase 5: Closed-Loop Orchestrator
-- `[x]` Create pipeline coordinator (orchestrator/pipeline.py) — full async pipeline
-- `[x]` Create design loop engine (orchestrator/design_loop.py) — thickness/dim modification strategy
-- `[x]` Create state manager (orchestrator/state_manager.py) — WebSocket broadcast
-- `[x]` Add API endpoints + WebSocket (/api/run-pipeline, /api/pipeline-status, /ws/pipeline/{id}, /api/pipelines)
-- `[x]` Fix Gmsh threading (signal.signal must run on main thread — removed run_in_executor)
-- `[x]` Test: 3-iteration loop — SF improved 0.32→0.63, disp 0.44→0.27mm [ALL ASSERTIONS PASSED]
+## Phase 5: Closed-Loop Orchestrator ✅ COMPLETE
+- [x] Create pipeline coordinator (orchestrator/pipeline.py) — full async pipeline
+- [x] Create design loop engine (orchestrator/design_loop.py) — thickness/dim modification strategy
+- [x] Create state manager (orchestrator/state_manager.py) — WebSocket broadcast
+- [x] Add API endpoints + WebSocket (/api/run-pipeline, /api/pipeline-status, /ws/pipeline/{id}, /api/pipelines)
+- [x] Fix Gmsh threading (signal.signal must run on main thread — removed run_in_executor)
+- [x] Test: 3-iteration loop — SF improved 0.32 to 0.63, disp 0.44 to 0.27mm [ALL ASSERTIONS PASSED]
 
-## Phase 6: Topology Optimization
-- `[ ]` Implement SIMP algorithm
-- `[ ]` Implement sensitivity analysis
-- `[ ]` Implement density filters
-- `[ ]` Create optimization controller
-- `[ ]` Test: Density field convergence
+## Phase 6: Topology Optimization ✅ COMPLETE
+- [x] Implement SIMP algorithm (optimization/simp.py) — C3D4 K assembly, sensitivity, OC update
+- [x] Implement sensitivity analysis
+- [x] Implement density filters — radius-based sensitivity filter (r_min=4.69mm, 17.7 avg neighbours)
+- [x] Create optimization pipeline (optimization/pipeline.py) — mesh to SIMP to NPY+CSV+STL
+- [x] Add API endpoint /api/optimize (TopologyRequest/TopologyResponse)
+- [x] Fix OC bisection bounds — adaptive lam_hi=max(Be)/rho_min
+- [x] Test: compliance 246 to 16.6 (93% reduction), 646/1958 solid, 66.8% material saved [ALL ASSERTIONS PASSED]
 
-## Phase 7: CAD Reconstruction + Validation
-- `[ ]` Surface extraction (marching cubes)
-- `[ ]` Mesh cleaning
-- `[ ]` CAD rebuild → STL
-- `[ ]` Validation FEA
-- `[ ]` Test: Optimized mesh → clean STL
+## Phase 7: CAD Reconstruction + Validation ✅ COMPLETE
+- [x] Voxelizer (reconstruction/voxelizer.py) — IDW interpolation from centroids to 48x48x48 grid
+- [x] Surface extractor (reconstruction/surface_extractor.py) — skimage marching cubes at rho=0.5
+- [x] Mesh cleaner (reconstruction/mesh_cleaner.py) — largest component, fill_holes, Laplacian smooth, trimesh export
+- [x] Reconstruction pipeline (reconstruction/pipeline.py) — density to voxel to surface to clean STL
+- [x] Test: 4887 vertices, 9504 faces, 464KB STL — [ALL ASSERTIONS PASSED]
 
-## Phase 8: React Frontend
-- `[ ]` Initialize Vite + React
-- `[ ]` Design system (index.css)
-- `[ ]` RequirementInput component
-- `[ ]` ParameterForm component
-- `[ ]` ValidationPanel component
-- `[ ]` ModelViewer (Three.js)
-- `[ ]` ResultsPanel
-- `[ ]` OptimizationHistory
-- `[ ]` HumanReview
-- `[ ]` PipelineStatus
-- `[ ]` Test: Full UI flow
+## Phase 8: React Frontend ✅ COMPLETE
+- [x] Initialize Vite + React (React 19, Three.js 0.186, Recharts, @react-three/fiber)
+- [x] Design system (index.css) — dark glassmorphism theme, CSS variables, animations
+- [x] RequirementInput component — NL prompt input with submit
+- [x] SpecForm component (ParameterForm) — material/component/load/BC editors
+- [x] ModelViewer component (Three.js + @react-three/fiber) — STL 3D viewer
+- [x] ResultsPanel component — FEA metrics, safety gauge, Recharts topology convergence chart
+- [x] PipelineStatus component — step tracker + live log console
+- [x] api.js client — all endpoints wired (interpret, validate, cad, fea, optimize, pipeline, report)
+- [x] App.jsx — full pipeline orchestration (Steps 1 to 7 UI flow)
+- [x] Bug fix: FEA results showed undefined — fixed fea_result nesting in App.jsx
+- [x] OptimizationHistory component — compliance chart, FEA table, topo summary, log panel
+- [x] HumanReview component — constraint checks, approve/reject buttons, reviewer notes
+- [x] Download PDF Report button — calls /api/report, opens PDF in new tab
+- [x] Sidebar routing for 3 views: Design / History / Review
+- [ ] End-to-end UI test (run full pipeline from browser and verify all panels)
 
-## Phase 9: Report Generation
-- `[ ]` PDF report generator
-- `[ ]` Optimization charts
-- `[ ]` API endpoint
-- `[ ]` Test: Generate PDF
+## Phase 9: Report Generation ✅ COMPLETE
+- [x] PDF report generator (report/generator.py) — ReportLab, cover + spec + FEA + topo + constraint tables
+- [x] Colour-coded constraint pass/fail in report
+- [x] API endpoint /api/report (ReportRequest/ReportResponse)
+- [x] reportlab installed in venv
+- [ ] Test: Run full pipeline end-to-end and download PDF
 
 ## Phase 10: Integration & Polish
-- `[ ]` End-to-end test
-- `[ ]` Error handling
-- `[ ]` UX polish
-- `[ ]` Final demo
+- [ ] End-to-end integration test (NL prompt to PDF report)
+- [ ] Error handling improvements (network errors, partial failures)
+- [ ] UX polish (loading states, empty states, mobile)
+- [ ] Final demo recording

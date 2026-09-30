@@ -24,6 +24,7 @@ matplotlib==3.10.3
 # 3D Processing
 open3d==0.18.0
 trimesh==4.6.8
+scikit-image
 
 # Report Generation
 reportlab==4.4.0

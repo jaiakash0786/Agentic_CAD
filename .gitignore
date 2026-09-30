@@ -9,9 +9,16 @@ __pycache__/
 *$py.class
 *.so
 
-# Outputs
+# Outputs / Generated files
 backend/output/
 backend/files/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.cache/
+frontend/coverage/
 
 # OS generated files
 .DS_Store

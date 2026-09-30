@@ -111,6 +111,7 @@ class FEAAnalyzer:
             max_displacement_mm=round(max_disp_mm, 6),
             max_strain=round(max_strain, 8),
             safety_factor=round(safety_factor, 4),
+            yield_strength_mpa=round(yield_str, 2),
             mass_kg=round(mass_kg, 6),
             volume_mm3=round(volume_mm3, 2),
             num_elements=num_elements,
