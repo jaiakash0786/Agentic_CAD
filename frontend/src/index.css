@@ -496,3 +496,82 @@ body {
 .log-line.ok     { color: var(--accent-green); }
 .log-line.warn   { color: var(--accent-amber); }
 .log-line.error  { color: var(--accent-red); }
+
+/* ─── Phase 10: Toast animation ─────────────────────────── */
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(32px) scale(0.95); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+/* ─── Phase 10: Focus / accessibility ────────────────────── */
+button:focus-visible,
+textarea:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent-purple);
+  outline-offset: 2px;
+}
+
+/* ─── Phase 10: Mobile responsive ────────────────────────── */
+
+/* Tablet / small desktop: collapse to 2-column */
+@media (max-width: 1024px) {
+  .main-content {
+    grid-template-columns: 280px 1fr !important;
+    grid-template-rows: auto 1fr !important;
+  }
+  .center-panel {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
+    min-height: 260px;
+  }
+  .right-panel {
+    grid-column: 1 / 3;
+    grid-row: 2 / 3;
+    overflow-y: auto;
+    max-height: 340px;
+  }
+}
+
+/* Mobile: single column stacked */
+@media (max-width: 680px) {
+  body { overflow: auto; }
+  #root { height: auto; }
+
+  .app-shell {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto 1fr !important;
+    overflow: auto;
+  }
+  .sidebar {
+    display: none !important;
+  }
+  .main-content {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: unset !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 8px;
+    gap: 8px;
+  }
+  .left-panel,
+  .center-panel,
+  .right-panel {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    min-height: unset;
+    max-height: unset;
+  }
+  .center-panel { min-height: 220px; }
+  .topbar { padding: 8px 12px; }
+  .topbar-logo { font-size: 13px; }
+}
+
+/* ─── Phase 10: Loading shimmer on empty model viewer ─────── */
+.model-viewer-loading {
+  background: linear-gradient(90deg,
+    var(--bg-elevated) 0%,
+    rgba(139,92,246,0.08) 50%,
+    var(--bg-elevated) 100%);
+  background-size: 300% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}

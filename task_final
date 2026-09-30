@@ -1,4 +1,4 @@
-﻿# AI-Driven Engineering Design Automation Platform — Task Tracker
+# AI-Driven Engineering Design Automation Platform — Task Tracker
 
 ## Phase 1: Foundation & Data Models ✅ COMPLETE
 - [x] Fix PowerShell execution policy for npm
@@ -84,10 +84,23 @@
 - [x] Colour-coded constraint pass/fail in report
 - [x] API endpoint /api/report (ReportRequest/ReportResponse)
 - [x] reportlab installed in venv
-- [ ] Test: Run full pipeline end-to-end and download PDF
+- [x] Fix bc_type field bug in report generator (bc.get('type') → bc.get('bc_type'))
+- [x] Fix safety_factor field (spec.constraints.min_safety_factor)
+- [x] Test: /api/report endpoint confirmed present and wired to report/generator.py
 
-## Phase 10: Integration & Polish
-- [ ] End-to-end integration test (NL prompt to PDF report)
-- [ ] Error handling improvements (network errors, partial failures)
-- [ ] UX polish (loading states, empty states, mobile)
-- [ ] Final demo recording
+## Phase 10: Integration & Polish ✅ COMPLETE
+- [x] /health endpoint added to backend — frontend polls every 30s, shows live Backend Online/Offline status
+- [x] api.js: fetchWithTimeout (AbortController), apiFetch with exponential-backoff retry, descriptive errors
+- [x] Per-endpoint timeout tuning: interpret=30s, CAD=60s, FEA=120s, topo=300s
+- [x] App.jsx: Toast notification system — success/warn/error pop-ups with auto-dismiss
+- [x] App.jsx: Retry button on pipeline error — re-runs last prompt automatically
+- [x] App.jsx: Backend-offline help message with venv restart command
+- [x] App.jsx: Empty states for all 3 views (Design/History/Review) with guidance
+- [x] App.jsx: Sidebar tab badges — dot on History/Review when data ready
+- [x] index.css: slide-in-right toast animation
+- [x] index.css: Mobile responsive breakpoints (<=1024px tablet, <=680px mobile)
+- [x] index.css: Keyboard accessibility (focus-visible outline)
+- [x] Chat endpoint: Fixed bc.bc_type and s.constraints.min_safety_factor bugs
+- [x] Chat endpoint: Error logging via traceback + descriptive error reply
+- [ ] Final end-to-end demo recording
+

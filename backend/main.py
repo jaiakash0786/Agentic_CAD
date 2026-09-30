@@ -53,6 +53,21 @@ app.add_middleware(
 app.mount("/files", StaticFiles(directory=str(OUTPUT_DIR)), name="files")
 
 
+# ─── Health Check ─────────────────────────────────────────────
+
+import time as _time
+_START_TIME = _time.time()
+
+@app.get("/health")
+async def health_check():
+    """Lightweight health check — used by frontend to poll backend status."""
+    return {
+        "status": "ok",
+        "version": "1.0.0",
+        "uptime_seconds": round(_time.time() - _START_TIME, 1),
+    }
+
+
 # ─── Request / Response Models ───────────────────────────────
 
 class InterpretRequest(BaseModel):

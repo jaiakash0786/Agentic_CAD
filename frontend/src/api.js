@@ -1,66 +1,123 @@
 /**
- * API client — all calls to the FastAPI backend (localhost:8000)
+ * API client — all calls to the FastAPI backend
+ * Phase 10: Added timeout, retry logic, and backend health check
  */
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+// ─── Fetch with timeout + retry ─────────────────────────────────────────────
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 120_000) {
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    return res;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(`Request timed out after ${timeoutMs / 1000}s. The backend may be overloaded — please try again.`);
+    }
+    if (!navigator.onLine) {
+      throw new Error('No internet connection. Please check your network and try again.');
+    }
+    throw new Error(`Network error: ${err.message}. Is the backend running on ${BASE}?`);
+  } finally {
+    clearTimeout(tid);
+  }
+}
+
+async function apiFetch(url, options = {}, { timeoutMs = 120_000, retries = 1 } = {}) {
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetchWithTimeout(url, options, timeoutMs);
+      if (!res.ok) {
+        let detail = `HTTP ${res.status}`;
+        try {
+          const body = await res.text();
+          // Try parse JSON error detail from FastAPI
+          const parsed = JSON.parse(body);
+          detail = parsed?.detail || parsed?.error || body;
+        } catch {
+          // raw text already in detail
+        }
+        throw new Error(detail);
+      }
+      return res.json();
+    } catch (err) {
+      lastErr = err;
+      if (attempt < retries) {
+        // Exponential backoff: 500ms, 1000ms ...
+        await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)));
+      }
+    }
+  }
+  throw lastErr;
+}
+
+// ─── Health check ────────────────────────────────────────────────────────────
+
+async function checkHealth() {
+  try {
+    const res = await fetchWithTimeout(`${BASE}/health`, { method: 'GET' }, 5000);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// ─── API methods ─────────────────────────────────────────────────────────────
+
 const api = {
+  BASE,
+  checkHealth,
+
   async interpret(description) {
-    const res = await fetch(`${BASE}/api/interpret`, {
+    return apiFetch(`${BASE}/api/interpret`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requirement: description }),   // backend expects "requirement"
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+      body: JSON.stringify({ requirement: description }),
+    }, { timeoutMs: 30_000, retries: 1 });
   },
 
   async validate(spec) {
-    const res = await fetch(`${BASE}/api/validate`, {
+    return apiFetch(`${BASE}/api/validate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(spec),   // DesignSpecification model directly
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+      body: JSON.stringify(spec),
+    }, { timeoutMs: 15_000, retries: 1 });
   },
 
   async generateCAD(spec) {
-    const res = await fetch(`${BASE}/api/generate-cad`, {
+    return apiFetch(`${BASE}/api/generate-cad`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ specification: spec }),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    }, { timeoutMs: 60_000, retries: 0 });
   },
 
   async runFEA(spec) {
-    const res = await fetch(`${BASE}/api/run-fea`, {
+    return apiFetch(`${BASE}/api/run-fea`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ specification: spec }),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    }, { timeoutMs: 120_000, retries: 0 });
   },
 
   async runOptimize(spec, options = {}) {
-    const res = await fetch(`${BASE}/api/optimize`, {
+    return apiFetch(`${BASE}/api/optimize`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         specification: spec,
         volume_fraction: options.volume_fraction ?? 0.4,
         penalty: options.penalty ?? 3.0,
-        max_iter: options.max_iter ?? 40,
+        max_iter: options.max_iter ?? 15,
       }),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    }, { timeoutMs: 300_000, retries: 0 });
   },
 
   async generateReport(spec, feaResult, topoResult) {
-    const res = await fetch(`${BASE}/api/report`, {
+    return apiFetch(`${BASE}/api/report`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -68,13 +125,11 @@ const api = {
         fea_result: feaResult || null,
         topo_result: topoResult || null,
       }),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    }, { timeoutMs: 30_000, retries: 1 });
   },
 
   async sendChatMessage(messages, spec, feaResult, topoResult) {
-    const res = await fetch(`${BASE}/api/chat`, {
+    return apiFetch(`${BASE}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -83,19 +138,15 @@ const api = {
         fea_result: feaResult || null,
         topo_result: topoResult || null,
       }),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    }, { timeoutMs: 30_000, retries: 1 });
   },
 
   async runPipeline(description) {
-    const res = await fetch(`${BASE}/api/run-pipeline`, {
+    return apiFetch(`${BASE}/api/run-pipeline`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requirement: description }),   // backend expects "requirement"
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+      body: JSON.stringify({ requirement: description }),
+    }, { timeoutMs: 300_000, retries: 0 });
   },
 
   fileUrl(path) {
