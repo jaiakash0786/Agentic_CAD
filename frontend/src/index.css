@@ -575,3 +575,9 @@ input:focus-visible {
   background-size: 300% 100%;
   animation: shimmer 2s ease-in-out infinite;
 }
+
+/* --- Backend busy dot pulse animation ---------------------- */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.75); }
+}

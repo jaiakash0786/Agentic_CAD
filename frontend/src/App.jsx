@@ -62,18 +62,18 @@ function Toast({ toasts, onDismiss }) {
 }
 
 // ─── Backend status pill ──────────────────────────────────────────
-function BackendStatus({ status }) {
+function BackendStatus({ status, busy }) {
   const colors = { ok: '#10b981', checking: '#f59e0b', error: '#ef4444' };
   const labels = { ok: 'Backend Online', checking: 'Connecting…', error: 'Backend Offline' };
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
       <div style={{
         width: '7px', height: '7px', borderRadius: '50%',
-        background: colors[status],
-        boxShadow: status === 'ok' ? `0 0 8px ${colors[status]}` : 'none',
+        background: colors[display],
+        boxShadow: display === 'ok' ? '0 0 8px #10b981' : display === 'busy' ? '0 0 6px #f59e0b' : 'none',',
         transition: 'all 0.4s',
       }} />
-      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{labels[status]}</span>
+      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{labels[display]}</span>
     </div>
   );
 }
@@ -122,15 +122,23 @@ export default function App() {
   const toastIdRef                    = useRef(0);
 
   // ── Backend health check ─────────────────────────────────────────
+  // Suppress "offline" during active pipeline runs — topo opt blocks
+  // the Python process for ~60-120s so health pings time out (5s).
+  // We only flip to offline when we're NOT mid-pipeline.
   useEffect(() => {
     const check = async () => {
       const ok = await api.checkHealth();
-      setBackendStatus(ok ? 'ok' : 'error');
+      // If the pipeline is running, ONLY update status to 'ok' (never to 'error')
+      // This prevents the false-offline flicker during topology optimization.
+      setBackendStatus(prev => {
+        if (!ok && loading) return prev;   // stay as-is while pipeline active
+        return ok ? 'ok' : 'error';
+      });
     };
     check();
     const interval = setInterval(check, 30_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [loading]);
 
   // ── Toast helpers ────────────────────────────────────────────────
   const showToast = useCallback((message, type = 'ok', durationMs = 4000) => {
@@ -381,7 +389,7 @@ export default function App() {
           AI-Powered Structural Optimizer
         </span>
         <div className="topbar-spacer" />
-        <BackendStatus status={backendStatus} />
+        <BackendStatus status={backendStatus} busy={loading} />
         <div className="divider" style={{ width: '1px', height: '20px', margin: '0 12px', background: 'var(--border-subtle)' }}/>
         <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
           Phases 1–10 ✓
