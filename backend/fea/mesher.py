@@ -175,11 +175,29 @@ class GmshMesher:
             num_elements : int
         """
         import gmsh
+        import threading
+        import signal as _signal_mod
 
         stem = self.step_path.stem
         mesh_path = self.output_dir / f"{stem}.inp"
 
-        gmsh.initialize()
+        # ── Thread-safe gmsh init ────────────────────────────────────────────
+        # gmsh.initialize() internally calls signal.signal(SIGINT, ...) which
+        # only works on the main thread. When run_in_executor runs us in a
+        # worker thread we must suppress that call temporarily.
+        def _gmsh_init_threadsafe():
+            if threading.current_thread() is not threading.main_thread():
+                _orig = _signal_mod.signal
+                _signal_mod.signal = lambda *a, **kw: None   # no-op
+                try:
+                    gmsh.initialize()
+                finally:
+                    _signal_mod.signal = _orig                # always restore
+            else:
+                gmsh.initialize()
+
+        _gmsh_init_threadsafe()
+
         gmsh.option.setNumber("General.Terminal", 0)  # suppress console spam
         gmsh.model.add("fea_model")
 

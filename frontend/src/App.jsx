@@ -38,11 +38,11 @@ function Toast({ toasts, onDismiss }) {
         <div key={t.id} style={{
           padding: '10px 14px',
           background: t.type === 'error' ? 'rgba(239,68,68,0.15)' :
-                      t.type === 'warn'  ? 'rgba(245,158,11,0.15)' :
-                                           'rgba(16,185,129,0.15)',
+            t.type === 'warn' ? 'rgba(245,158,11,0.15)' :
+              'rgba(16,185,129,0.15)',
           border: `1px solid ${t.type === 'error' ? 'rgba(239,68,68,0.4)' :
-                                t.type === 'warn'  ? 'rgba(245,158,11,0.4)' :
-                                                     'rgba(16,185,129,0.4)'}`,
+            t.type === 'warn' ? 'rgba(245,158,11,0.4)' :
+              'rgba(16,185,129,0.4)'}`,
           borderRadius: '10px', backdropFilter: 'blur(12px)',
           display: 'flex', alignItems: 'flex-start', gap: '8px',
           fontSize: '12px', color: 'var(--text-primary)',
@@ -61,17 +61,22 @@ function Toast({ toasts, onDismiss }) {
   );
 }
 
-// ─── Backend status pill ──────────────────────────────────────────
+
+// --- Backend status pill --------------------------------------------------
+// busy=true while pipeline runs: shows amber 'Backend Busy' not red 'Offline'
 function BackendStatus({ status, busy }) {
-  const colors = { ok: '#10b981', checking: '#f59e0b', error: '#ef4444' };
-  const labels = { ok: 'Backend Online', checking: 'Connecting…', error: 'Backend Offline' };
+  const display = (busy && status !== 'error') ? 'busy' : status;
+  const colors  = { ok: '#10b981', busy: '#f59e0b', checking: '#f59e0b', error: '#ef4444' };
+  const labels  = { ok: 'Backend Online', busy: 'Backend Busy...', checking: 'Connecting...', error: 'Backend Offline' };
+  const pulse   = display === 'busy' || display === 'checking';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
       <div style={{
         width: '7px', height: '7px', borderRadius: '50%',
         background: colors[display],
-        boxShadow: display === 'ok' ? '0 0 8px #10b981' : display === 'busy' ? '0 0 6px #f59e0b' : 'none',',
+        boxShadow: display === 'ok' ? '0 0 8px #10b981' : display === 'busy' ? '0 0 6px #f59e0b' : 'none',
         transition: 'all 0.4s',
+        animation: pulse ? 'pulse-dot 1.4s ease-in-out infinite' : 'none',
       }} />
       <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{labels[display]}</span>
     </div>
@@ -102,24 +107,24 @@ function EmptyState({ icon, title, subtitle, suggestion }) {
 
 export default function App() {
   // ── State ────────────────────────────────────────────────────────
-  const [view, setView]               = useState('design');
-  const [chatOpen, setChatOpen]       = useState(false);
+  const [view, setView] = useState('design');
+  const [chatOpen, setChatOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [loading, setLoading]         = useState(false);
-  const [spec, setSpec]               = useState(null);
-  const [stepStates, setStepStates]   = useState({});
-  const [log, setLog]                 = useState([]);
-  const [feaResult, setFeaResult]     = useState(null);
-  const [topoResult, setTopoResult]   = useState(null);
-  const [stlUrl, setStlUrl]           = useState(null);
-  const [stlLabel, setStlLabel]       = useState('');
-  const [error, setError]             = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [spec, setSpec] = useState(null);
+  const [stepStates, setStepStates] = useState({});
+  const [log, setLog] = useState([]);
+  const [feaResult, setFeaResult] = useState(null);
+  const [topoResult, setTopoResult] = useState(null);
+  const [stlUrl, setStlUrl] = useState(null);
+  const [stlLabel, setStlLabel] = useState('');
+  const [error, setError] = useState(null);
   const [lastDescription, setLastDescription] = useState('');
 
   // Phase 10 additions
   const [backendStatus, setBackendStatus] = useState('checking');
-  const [toasts, setToasts]           = useState([]);
-  const toastIdRef                    = useRef(0);
+  const [toasts, setToasts] = useState([]);
+  const toastIdRef = useRef(0);
 
   // ── Backend health check ─────────────────────────────────────────
   // Suppress "offline" during active pipeline runs — topo opt blocks
@@ -375,13 +380,13 @@ export default function App() {
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#grad)" strokeWidth="2">
             <defs>
               <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#8b5cf6"/>
-                <stop offset="100%" stopColor="#06b6d4"/>
+                <stop offset="0%" stopColor="#8b5cf6" />
+                <stop offset="100%" stopColor="#06b6d4" />
               </linearGradient>
             </defs>
-            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-            <path d="M2 17l10 5 10-5"/>
-            <path d="M2 12l10 5 10-5"/>
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
           </svg>
           Agentic CAD
         </div>
@@ -390,7 +395,7 @@ export default function App() {
         </span>
         <div className="topbar-spacer" />
         <BackendStatus status={backendStatus} busy={loading} />
-        <div className="divider" style={{ width: '1px', height: '20px', margin: '0 12px', background: 'var(--border-subtle)' }}/>
+        <div className="divider" style={{ width: '1px', height: '20px', margin: '0 12px', background: 'var(--border-subtle)' }} />
         <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
           Phases 1–10 ✓
         </span>
@@ -400,28 +405,28 @@ export default function App() {
       <nav className="sidebar">
         <NavIcon active={view === 'design'} onClick={() => setView('design')} tooltip="Design" id="nav-design">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+            <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
           </svg>
         </NavIcon>
         <NavIcon active={view === 'history'} onClick={() => setView('history')} tooltip="History" id="nav-history"
           badge={!!topoResult}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
           </svg>
         </NavIcon>
         <NavIcon active={view === 'review'} onClick={() => setView('review')} tooltip="Review" id="nav-review"
           badge={!!feaResult}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M9 11l3 3L22 4"/>
-            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            <path d="M9 11l3 3L22 4" />
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
           </svg>
         </NavIcon>
         <div className="sidebar-spacer" />
         <NavIcon active={settingsOpen} onClick={() => setSettingsOpen(true)} tooltip="Settings" id="nav-settings">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0 1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0 1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
         </NavIcon>
       </nav>
@@ -474,7 +479,7 @@ export default function App() {
                   <div style={{ fontSize: '11px', color: 'var(--accent-red)', lineHeight: '1.6' }}>{error}</div>
                   {backendStatus === 'error' && (
                     <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '6px', lineHeight: '1.5' }}>
-                      ⚠ Backend appears offline. Run:<br/>
+                      ⚠ Backend appears offline. Run:<br />
                       <code style={{ color: 'var(--accent-cyan)', fontSize: '9px' }}>
                         .\venv\Scripts\python.exe -m uvicorn main:app --reload --port 8000
                       </code>
