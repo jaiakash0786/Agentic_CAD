@@ -396,27 +396,24 @@ export default function App() {
       {/* ─── Top Bar ──────────────────────────────────────────────── */}
       <header className="topbar">
         <div className="topbar-logo">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#grad)" strokeWidth="2">
-            <defs>
-              <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#8b5cf6" />
-                <stop offset="100%" stopColor="#06b6d4" />
-              </linearGradient>
-            </defs>
-            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-            <path d="M2 17l10 5 10-5" />
-            <path d="M2 12l10 5 10-5" />
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#003E29" strokeWidth="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
           </svg>
           Agentic CAD
         </div>
-        <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '4px' }}>
-          AI-Powered Structural Optimizer
+        <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '6px', fontWeight: 400 }}>
+          AI-Powered Structural Platform
         </span>
         <div className="topbar-spacer" />
         <BackendStatus status={backendStatus} busy={loading} />
-        <div className="divider" style={{ width: '1px', height: '20px', margin: '0 12px', background: 'var(--border-subtle)' }} />
-        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-          Phases 1–10 ✓
+        <div style={{ width: '1px', height: '18px', margin: '0 14px', background: 'var(--border-subtle)' }} />
+        <span style={{
+          fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
+          color: 'var(--accent-green)', textTransform: 'uppercase',
+          padding: '3px 10px', border: '1.5px solid rgba(0,62,41,0.2)',
+          borderRadius: 'var(--radius-pill)', background: 'rgba(0,62,41,0.06)',
+        }}>
+          Final Year Project
         </span>
       </header>
 
@@ -481,17 +478,17 @@ export default function App() {
               {/* Error card with retry */}
               {error && (
                 <div className="glass-card fade-in" style={{
-                  padding: '14px', borderColor: 'rgba(239,68,68,0.3)',
-                  background: 'rgba(239,68,68,0.05)',
+                  padding: '14px', borderColor: 'rgba(220,38,38,0.25)',
+                  background: 'rgba(220,38,38,0.04)',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <div className="badge badge-red">Pipeline Error</div>
                     {lastDescription && (
                       <button onClick={retryPipeline}
                         style={{
-                          fontSize: '10px', padding: '4px 10px', borderRadius: '6px',
-                          background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.35)',
-                          color: 'var(--accent-purple)', cursor: 'pointer',
+                          fontSize: '10px', padding: '4px 12px', borderRadius: 'var(--radius-pill)',
+                          background: 'rgba(0,62,41,0.08)', border: '1.5px solid rgba(0,62,41,0.2)',
+                          color: 'var(--accent-green)', cursor: 'pointer', fontWeight: 600,
                         }}>↺ Retry</button>
                     )}
                   </div>
