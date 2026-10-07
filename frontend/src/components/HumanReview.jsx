@@ -55,10 +55,10 @@ export default function HumanReview({ spec, feaResult, topoResult, onApprove, on
     if (!spec) return;
     setDownloading(true);
     try {
-      const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       const res = await api.generateReport(spec, feaResult, topoResult);
       if (res?.success && res.report_url) {
-        const url = `${BASE}${res.report_url}`;
+        // Use api.BASE getter so it respects the user's Settings URL
+        const url = `${api.BASE}${res.report_url}`;
         setReportUrl(url);
         window.open(url, '_blank');
       }
@@ -72,30 +72,38 @@ export default function HumanReview({ spec, feaResult, topoResult, onApprove, on
   const fea  = feaResult  || {};
   const topo = topoResult || {};
   const sf   = fea.safety_factor ?? 0;
-  const overallPass = sf >= 2 && (fea.max_displacement_mm ?? 999) < 1;
 
-  // Build constraint checks from live FEA data
+  // BUG 5 FIX: Read thresholds from spec.constraints, not hardcoded values
+  const reqSF   = spec?.constraints?.min_safety_factor   ?? 2.0;
+  const reqDisp = spec?.constraints?.max_displacement_mm ?? 1.0;
+  // Max stress: use spec value if given, otherwise derive from yield / SF
+  const reqStress = spec?.constraints?.max_stress_mpa
+    ?? (fea.yield_strength_mpa ? fea.yield_strength_mpa / reqSF : 270 / reqSF);
+
+  const overallPass = sf >= reqSF && (fea.max_displacement_mm ?? 999) <= reqDisp;
+
+  // Build constraint checks from live FEA data using spec-defined thresholds
   const checks = [
     {
       label: 'Safety Factor',
-      required: '≥ 2.0',
+      required: `≥ ${reqSF.toFixed(1)}`,
       actual: sf.toFixed(2),
       unit: '',
-      passed: sf >= 2,
+      passed: sf >= reqSF,
     },
     {
       label: 'Max Displacement',
-      required: '< 1.0',
+      required: `≤ ${reqDisp.toFixed(1)}`,
       actual: (fea.max_displacement_mm ?? 999).toFixed(3),
       unit: ' mm',
-      passed: (fea.max_displacement_mm ?? 999) < 1,
+      passed: (fea.max_displacement_mm ?? 999) <= reqDisp,
     },
     {
       label: 'Von Mises Stress',
-      required: `< ${(fea.yield_strength_mpa ?? 270).toFixed(0)}`,
+      required: `< ${reqStress.toFixed(0)}`,
       actual: (fea.max_stress_mpa ?? 0).toFixed(1),
       unit: ' MPa',
-      passed: (fea.max_stress_mpa ?? 0) < (fea.yield_strength_mpa ?? 270),
+      passed: (fea.max_stress_mpa ?? 0) < reqStress,
     },
   ];
 

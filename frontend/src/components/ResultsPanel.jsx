@@ -57,7 +57,9 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 export default function ResultsPanel({ feaResult, topoResult, onNavigateToHistory }) {
-  const fea  = feaResult?.fea_result || feaResult || {};
+  // feaResult is already the unwrapped FEAResult object from App.jsx state
+  // (App.jsx does: setFeaResult(feaRes.fea_result ?? feaRes))
+  const fea  = feaResult || {};
   const topo = topoResult || {};
 
   // Prepare convergence chart data

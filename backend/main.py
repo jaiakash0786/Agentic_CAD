@@ -144,7 +144,7 @@ class PipelineResponse(BaseModel):
     state: PipelineState
 
 
-# ─── Health Check ────────────────────────────────────────────
+# ─── Root ────────────────────────────────────────────────────
 
 @app.get("/")
 async def root():
@@ -158,11 +158,6 @@ async def root():
             "Report Generator"
         ]
     }
-
-
-@app.get("/health")
-async def health():
-    return {"status": "healthy"}
 
 
 # ─── Materials API ───────────────────────────────────────────

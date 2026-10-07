@@ -1,8 +1,27 @@
 /**
  * API client — all calls to the FastAPI backend
  * Phase 10: Added timeout, retry logic, and backend health check
+ *
+ * BUG 8 FIX: BASE URL is now read dynamically from localStorage (via Settings modal)
+ * so users can change the API endpoint at runtime without reloading.
+ *
+ * BUG 6 FIX: fileUrl() now preserves the full relative path instead of stripping subdirs.
  */
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+// ─── Dynamic base URL (reads from localStorage on every call) ────────────────
+
+function getBase() {
+  try {
+    const saved = localStorage.getItem('agentic_cad_settings');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.apiUrl) return parsed.apiUrl.replace(/\/$/, '');
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return import.meta.env.VITE_API_URL || 'http://localhost:8000';
+}
 
 // ─── Fetch with timeout + retry ─────────────────────────────────────────────
 
@@ -19,7 +38,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 120_000) {
     if (!navigator.onLine) {
       throw new Error('No internet connection. Please check your network and try again.');
     }
-    throw new Error(`Network error: ${err.message}. Is the backend running on ${BASE}?`);
+    throw new Error(`Network error: ${err.message}. Is the backend running on ${getBase()}?`);
   } finally {
     clearTimeout(tid);
   }
@@ -58,7 +77,7 @@ async function apiFetch(url, options = {}, { timeoutMs = 120_000, retries = 1 } 
 
 async function checkHealth() {
   try {
-    const res = await fetchWithTimeout(`${BASE}/health`, { method: 'GET' }, 5000);
+    const res = await fetchWithTimeout(`${getBase()}/health`, { method: 'GET' }, 5000);
     return res.ok;
   } catch {
     return false;
@@ -68,11 +87,12 @@ async function checkHealth() {
 // ─── API methods ─────────────────────────────────────────────────────────────
 
 const api = {
-  BASE,
+  // BASE is a getter so it always reflects the current settings value
+  get BASE() { return getBase(); },
   checkHealth,
 
   async interpret(description) {
-    return apiFetch(`${BASE}/api/interpret`, {
+    return apiFetch(`${getBase()}/api/interpret`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ requirement: description }),
@@ -80,7 +100,7 @@ const api = {
   },
 
   async validate(spec) {
-    return apiFetch(`${BASE}/api/validate`, {
+    return apiFetch(`${getBase()}/api/validate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(spec),
@@ -88,7 +108,7 @@ const api = {
   },
 
   async generateCAD(spec) {
-    return apiFetch(`${BASE}/api/generate-cad`, {
+    return apiFetch(`${getBase()}/api/generate-cad`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ specification: spec }),
@@ -96,7 +116,7 @@ const api = {
   },
 
   async runFEA(spec) {
-    return apiFetch(`${BASE}/api/run-fea`, {
+    return apiFetch(`${getBase()}/api/run-fea`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ specification: spec }),
@@ -104,7 +124,7 @@ const api = {
   },
 
   async runOptimize(spec, options = {}) {
-    return apiFetch(`${BASE}/api/optimize`, {
+    return apiFetch(`${getBase()}/api/optimize`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -117,7 +137,7 @@ const api = {
   },
 
   async generateReport(spec, feaResult, topoResult) {
-    return apiFetch(`${BASE}/api/report`, {
+    return apiFetch(`${getBase()}/api/report`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -129,7 +149,7 @@ const api = {
   },
 
   async sendChatMessage(messages, spec, feaResult, topoResult) {
-    return apiFetch(`${BASE}/api/chat`, {
+    return apiFetch(`${getBase()}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -142,22 +162,25 @@ const api = {
   },
 
   async runPipeline(description) {
-    return apiFetch(`${BASE}/api/run-pipeline`, {
+    return apiFetch(`${getBase()}/api/run-pipeline`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ requirement: description }),
     }, { timeoutMs: 300_000, retries: 0 });
   },
 
-  fileUrl(path) {
-    if (!path) return null;
-    const filename = path.split(/[\\\/]/).pop();
-    return `${BASE}/files/${filename}`;
+  /**
+   * BUG 6 FIX: fileUrl now accepts a relative URL path (e.g. "/files/cad/part.stl")
+   * and prepends the dynamic base — no longer strips the subdirectory.
+   */
+  fileUrl(relativePath) {
+    if (!relativePath) return null;
+    return `${getBase()}${relativePath}`;
   },
 
   stlUrl(relativePath) {
     if (!relativePath) return null;
-    return `${BASE}${relativePath}`;
+    return `${getBase()}${relativePath}`;
   },
 };
 

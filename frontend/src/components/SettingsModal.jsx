@@ -236,6 +236,38 @@ export default function SettingsModal({ isOpen, onClose, onSettingsChange }) {
 
           <div className="divider" style={{ height: '1px', background: 'var(--border-subtle, rgba(255,255,255,0.08))' }} />
 
+          {/* Section 3: Design Constraints */}
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent-green, #10b981)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              🛡️ Design Constraints
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="form-field">
+                <label className="form-label">Min Safety Factor</label>
+                <input
+                  className="form-input"
+                  type="number"
+                  min="1.1"
+                  max="10"
+                  step="0.1"
+                  value={settings.minSafetyFactor}
+                  onChange={e => handleChange('minSafetyFactor', parseFloat(e.target.value))}
+                />
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px' }}>
+                  Overrides AI-generated SF constraint
+                </div>
+              </div>
+              <div className="form-field">
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '22px', lineHeight: '1.5' }}>
+                  SF ≥ {settings.minSafetyFactor} applied to<br />FEA check &amp; human review
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+          <div className="divider" style={{ height: '1px', background: 'var(--border-subtle, rgba(255,255,255,0.08))' }} />
+
           {/* Section 3: Backend Endpoint */}
           <div>
             <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary, #cbd5e1)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>

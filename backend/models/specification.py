@@ -25,15 +25,22 @@ class ComponentType(str, Enum):
 
 
 class LoadDirection(str, Enum):
-    """Direction of applied force."""
+    """Direction of applied force.
+
+    DOWNWARD and UPWARD are intentional Python enum aliases for NEGATIVE_Y /
+    POSITIVE_Y. They share the same string value so the LLM can output either
+    "downward" or "-y" and both parse correctly. Python enum iteration returns
+    only the 4 canonical directions (+x, -x, +y, -y) plus Z axes.
+    """
     POSITIVE_X = "+x"
     NEGATIVE_X = "-x"
     POSITIVE_Y = "+y"
     NEGATIVE_Y = "-y"
     POSITIVE_Z = "+z"
     NEGATIVE_Z = "-z"
-    DOWNWARD = "-y"       # Alias for gravity direction
-    UPWARD = "+y"
+    DOWNWARD = "-y"    # alias for NEGATIVE_Y — gravity direction shorthand
+    UPWARD   = "+y"    # alias for POSITIVE_Y
+
 
 
 class LoadType(str, Enum):

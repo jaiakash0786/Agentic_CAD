@@ -185,7 +185,18 @@ export default function App() {
       addLog('🧠 Interpreting requirement…');
       const interpResult = await api.interpret(description);
       if (!interpResult?.specification) throw new Error('AI interpretation returned no specification');
-      const parsedSpec = interpResult.specification;
+
+      // Load user settings and apply overrides on top of the LLM spec
+      const userSettings = loadSettings();
+      const parsedSpec = {
+        ...interpResult.specification,
+        // Override constraints with Settings values (user preference wins over LLM guess)
+        constraints: {
+          ...(interpResult.specification.constraints || {}),
+          min_safety_factor: userSettings.minSafetyFactor ?? interpResult.specification.constraints?.min_safety_factor ?? 2.0,
+        },
+      };
+
       setSpec(parsedSpec);
       setStep('interpret', 'done');
       addLog(`✓ Interpreted: ${parsedSpec.component} / ${parsedSpec.material_name}`, 'ok');
@@ -197,7 +208,8 @@ export default function App() {
       const valResult = await api.validate(parsedSpec);
       setStep('validate', valResult?.valid ? 'done' : 'error');
       if (!valResult?.valid) {
-        const issues = valResult?.issues?.join(', ') || 'Unknown validation issue';
+        // BUG 13 FIX: backend returns 'errors' key, not 'issues'
+        const issues = valResult?.errors?.join(', ') || valResult?.issues?.join(', ') || 'Unknown validation issue';
         addLog(`⚠ Validation: ${issues}`, 'warn');
         showToast(`Validation warning: ${issues}`, 'warn', 6000);
       } else {
@@ -219,7 +231,15 @@ export default function App() {
       // Step 4: FEA
       setStep('fea', 'active');
       addLog('🔬 Running FEA (C3D4 tetrahedral solver)…');
-      const feaRes = await api.runFEA(parsedSpec);
+      // Apply elementSize from Settings to override spec mesh settings
+      const specWithMesh = {
+        ...parsedSpec,
+        mesh_settings: {
+          ...(parsedSpec.mesh_settings || {}),
+          element_size: userSettings.elementSize ?? 5.0,
+        },
+      };
+      const feaRes = await api.runFEA(specWithMesh);
       if (feaRes?.success === false) throw new Error(`FEA failed: ${feaRes.error}`);
       const feaData = feaRes.fea_result ?? feaRes;
       setFeaResult(feaData);
@@ -235,9 +255,8 @@ export default function App() {
 
       // Step 5: Topology Optimization
       setStep('optimize', 'active');
-      const userSettings = loadSettings();
       addLog(`⚡ Running SIMP topology optimization (${userSettings.maxTopoIter ?? 15} iters)…`);
-      const topoRes = await api.runOptimize(parsedSpec, {
+      const topoRes = await api.runOptimize(specWithMesh, {
         volume_fraction: userSettings.volumeFraction ?? 0.4,
         max_iter: userSettings.maxTopoIter ?? 15,
       });
