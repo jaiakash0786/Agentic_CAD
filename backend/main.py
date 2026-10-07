@@ -17,6 +17,10 @@ Architecture:
         ├── /api/report        → Report Generation
         └── /ws/pipeline/{id}  → Real-time pipeline updates
 """
+import logging
+import asyncio
+
+logger = logging.getLogger("agentic_cad")
 import uuid
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -51,6 +55,21 @@ app.add_middleware(
 
 # Serve generated files (CAD models, reports)
 app.mount("/files", StaticFiles(directory=str(OUTPUT_DIR)), name="files")
+
+
+# ─── Health Check ─────────────────────────────────────────────
+
+import time as _time
+_START_TIME = _time.time()
+
+@app.get("/health")
+async def health_check():
+    """Lightweight health check — used by frontend to poll backend status."""
+    return {
+        "status": "ok",
+        "version": "1.0.0",
+        "uptime_seconds": round(_time.time() - _START_TIME, 1),
+    }
 
 
 # ─── Request / Response Models ───────────────────────────────
@@ -125,7 +144,7 @@ class PipelineResponse(BaseModel):
     state: PipelineState
 
 
-# ─── Health Check ────────────────────────────────────────────
+# ─── Root ────────────────────────────────────────────────────
 
 @app.get("/")
 async def root():
@@ -139,11 +158,6 @@ async def root():
             "Report Generator"
         ]
     }
-
-
-@app.get("/health")
-async def health():
-    return {"status": "healthy"}
 
 
 # ─── Materials API ───────────────────────────────────────────
@@ -330,27 +344,38 @@ async def run_optimize(request: TopologyRequest):
       5. Generate density-coloured preview STL
     """
     from pathlib import Path as P
+    import traceback as _tb
     try:
         spec = request.specification
         step_path = None
+        loop = asyncio.get_event_loop()
 
         if request.step_file_path:
             step_path = P(request.step_file_path)
             if not step_path.exists():
                 return TopologyResponse(success=False, error=f"STEP file not found: {request.step_file_path}")
         else:
+            # CAD generation is CPU-bound — run in thread so /health stays responsive
             from cad.generator import generate_cad_model
-            step_str, _ = generate_cad_model(spec)
+            step_str, _ = await loop.run_in_executor(None, generate_cad_model, spec)
             step_path = P(step_str)
 
         from optimization.pipeline import run_topology_pipeline
-        result = run_topology_pipeline(
-            spec=spec,
-            step_path=step_path,
-            job_id=request.job_id,
-            volume_fraction=request.volume_fraction,
-            penalty=request.penalty,
-            max_iter=request.max_iter,
+        import functools
+        # SIMP is CPU-bound (numpy matrix ops) — offload to thread pool.
+        # This keeps the uvicorn event loop free to answer /health pings
+        # so the frontend does NOT show "Backend Offline" during topo opt.
+        result = await loop.run_in_executor(
+            None,
+            functools.partial(
+                run_topology_pipeline,
+                spec=spec,
+                step_path=step_path,
+                job_id=request.job_id,
+                volume_fraction=request.volume_fraction,
+                penalty=request.penalty,
+                max_iter=request.max_iter,
+            )
         )
 
         return TopologyResponse(
@@ -371,8 +396,8 @@ async def run_optimize(request: TopologyRequest):
         )
 
     except Exception as e:
-        import traceback
-        return TopologyResponse(success=False, error=f"{str(e)}\n{traceback.format_exc()}")
+        logger.error("Topology optimization error: %s", _tb.format_exc())
+        return TopologyResponse(success=False, error=str(e))
 
 
 # ─── Full Pipeline ───────────────────────────────────────────

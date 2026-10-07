@@ -246,6 +246,8 @@ async def run_full_pipeline(
             progress_percent=100.0,
             message="Pipeline complete. Awaiting human review.",
         )
+        # Clean up per-pipeline state to prevent memory leak
+        _last_proposal.pop(pipeline_id, None)
         return final_state
 
     except Exception as e:
@@ -257,6 +259,8 @@ async def run_full_pipeline(
             message=f"Pipeline failed: {str(e)}",
             error=f"{str(e)}\n{tb}",
         )
+        # Clean up per-pipeline state to prevent memory leak
+        _last_proposal.pop(pipeline_id, None)
         return error_state
 
 

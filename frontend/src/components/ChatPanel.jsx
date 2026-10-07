@@ -139,9 +139,9 @@ export default function ChatPanel({ spec, feaResult, topoResult, isOpen, onToggl
         style={{
           position: 'fixed', bottom: '24px', right: '24px', zIndex: 1000,
           width: '52px', height: '52px', borderRadius: '50%', border: 'none',
-          background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
-          color: '#fff', fontSize: '22px', cursor: 'pointer',
-          boxShadow: '0 4px 20px rgba(139,92,246,0.5)',
+          background: '#003E29',
+          color: '#FAFAF8', fontSize: '22px', cursor: 'pointer',
+          boxShadow: '0 4px 20px rgba(0,62,41,0.4)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'transform 0.2s, box-shadow 0.2s',
         }}
@@ -158,37 +158,37 @@ export default function ChatPanel({ spec, feaResult, topoResult, isOpen, onToggl
           style={{
             position: 'fixed', bottom: '88px', right: '24px', zIndex: 999,
             width: '380px', height: '520px',
-            background: 'rgba(15,23,42,0.97)',
-            border: '1px solid rgba(139,92,246,0.3)',
+            background: '#FAFAF8',
+            border: '1.5px solid rgba(11,29,23,0.1)',
             borderRadius: '20px',
             display: 'flex', flexDirection: 'column',
             backdropFilter: 'blur(20px)',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.15)',
+            boxShadow: '0 20px 60px rgba(11,29,23,0.15), 0 0 0 1px rgba(11,29,23,0.06)',
             overflow: 'hidden',
           }}
         >
           {/* Header */}
           <div style={{
             padding: '14px 18px',
-            borderBottom: '1px solid var(--border-subtle)',
-            background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(6,182,212,0.1))',
+            borderBottom: '1px solid rgba(11,29,23,0.08)',
+            background: 'rgba(0,62,41,0.04)',
             display: 'flex', alignItems: 'center', gap: '10px',
           }}>
             <div style={{
               width: '34px', height: '34px', borderRadius: '50%',
-              background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
+              background: '#003E29',
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px',
             }}>🤖</div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: '13px' }}>Design AI Assistant</div>
-              <div style={{ fontSize: '10px', color: 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-green)', boxShadow: '0 0 6px var(--accent-green)' }} />
+              <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>Design AI Assistant</div>
+              <div style={{ fontSize: '10px', color: 'var(--accent-mint)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-mint)', boxShadow: '0 0 6px var(--accent-mint)' }} />
                 Context-aware · {feaResult ? 'FEA loaded' : 'No results yet'}
               </div>
             </div>
             <button onClick={() => setMessages([{ role: 'assistant', content: 'Chat cleared. What would you like to know?' }])}
-              style={{ marginLeft: 'auto', fontSize: '10px', padding: '3px 8px', borderRadius: '6px', cursor: 'pointer',
-                background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
+              style={{ marginLeft: 'auto', fontSize: '10px', padding: '3px 10px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
+                background: 'transparent', border: '1.5px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
               Clear
             </button>
           </div>

@@ -179,10 +179,12 @@ def generate_report(
     spec_rows = [
         ("Component type",    component),
         ("Material",          material),
-        ("Safety factor req.",spec_dict.get("safety_factor", "—")),
+        ("Min Safety Factor", spec_dict.get("constraints", {}).get("min_safety_factor", "—")),
+        ("Max Displacement",  f"{spec_dict.get('constraints', {}).get('max_displacement_mm', '—')} mm"),
     ]
     for k, v in dims.items():
-        spec_rows.append((f"  {k.replace('_', ' ').title()}", f"{v} mm"))
+        if v is not None:
+            spec_rows.append((f"  {k.replace('_', ' ').title()}", f"{v} mm"))
 
     loads = spec_dict.get("loads", [])
     for i, ld in enumerate(loads, 1):
@@ -190,7 +192,7 @@ def generate_report(
 
     bcs = spec_dict.get("boundary_conditions", [])
     for i, bc in enumerate(bcs, 1):
-        spec_rows.append((f"BC {i}", f"{bc.get('type', '?')} @ {bc.get('location', '?')}"))
+        spec_rows.append((f"BC {i}", f"{bc.get('bc_type', bc.get('type', '?'))} @ {bc.get('location', '?')}"))
 
     story.append(_kv_table(spec_rows))
     story.append(Spacer(1, 6*mm))
