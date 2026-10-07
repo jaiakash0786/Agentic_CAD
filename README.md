@@ -1,102 +1,226 @@
-# Agentic-CAD
+# Agentic CAD — AI-Powered Structural Design Platform
 
-An autonomous, AI-driven engineering design automation platform that translates natural language requirements into validated, manufacturable 3D CAD models, with a pipeline designed for physics simulations and topology optimization.
+> *"Describe your part in plain English. Get a validated, optimized 3D CAD model."*
 
-## 🚀 Overview
+**Agentic CAD** is an autonomous mechanical engineering platform that translates natural language requirements into physics-validated, topology-optimized 3D CAD models — with zero manual CAD work.
 
-**Agentic-CAD** leverages Large Language Models (LLMs) and parametric CAD engines to act as an autonomous mechanical engineer. 
+[![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green?logo=fastapi)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18-blue?logo=react)](https://react.dev)
+[![Groq](https://img.shields.io/badge/Groq-qwen3.8b-orange)](https://groq.com)
 
-You can input a natural language prompt, such as:
-> *"Design an aluminum L-bracket that supports a 5kN downward load with a safety factor of 2"*
+---
 
-The platform will autonomously:
-1. **Interpret** the request into strict engineering constraints.
-2. **Validate** the physics, material properties, and geometric constraints.
-3. **Generate** a parametric 3D CAD model (STEP and STL formats) from scratch.
+## 🎬 How It Works
+
+Type a requirement like:
+> *"Design an aluminum L-bracket 150mm long supporting 10kN downward, safety factor ≥ 2"*
+
+The platform autonomously runs a **7-stage pipeline**:
+
+```
+Natural Language
+      ↓
+ AI Interpreter  (Groq LLM → structured JSON spec)
+      ↓
+   Validator     (physics rules, material limits, geometry checks)
+      ↓
+ CAD Generator   (CadQuery → STEP + STL files)
+      ↓
+  FEA Solver     (Gmsh mesh → C3D4 tetrahedral FEA → stress / safety factor)
+      ↓
+Topo Optimizer   (SIMP algorithm → material removal → mass savings %)
+      ↓
+  Human Review   (engineer approve / reject → autonomous redesign loop)
+```
+
+---
 
 ## ✨ Key Features
 
-- **🗣️ Natural Language Interface:** Converts plain English into structured engineering specifications.
-- **🛡️ Automated Validation Engine:** Verifies physics limits (yield stress, displacement) and checks for completeness before generation.
-- **⚙️ Parametric Generation:** Autonomously builds 3D models using `CadQuery` without human intervention.
-- **🧩 Modular Architecture:** Includes a `Template Registry` making it extremely easy to add new mechanical components (brackets, beams, plates, etc.).
-- **⚡ Fast API Backend:** Fully functional REST API backend built with FastAPI.
+| Feature | Description |
+|---------|-------------|
+| 🗣️ **Natural Language Input** | Plain English → structured `DesignSpecification` via Groq LLM |
+| 🛡️ **Physics Validation** | Yield stress, displacement, safety factor rules checked before generation |
+| ⚙️ **Parametric CAD** | CadQuery generates STEP & STL — L-brackets, beams, plates, shafts |
+| 🔬 **FEA Solver** | Gmsh tetrahedral mesher + CalculiX-style C3D4 FEA pipeline |
+| ⚡ **SIMP Topology** | Iterative density-based material optimization with convergence chart |
+| 🔄 **Autonomous Redesign** | Orchestrator retries failed designs automatically |
+| 👁️ **3D Viewer** | Real-time STL viewer with Three.js (original + optimized model toggle) |
+| 💬 **AI Chat Assistant** | Context-aware chatbot explains FEA results and design decisions |
+| 📊 **PDF Reports** | Full engineering report with spec, FEA results, and optimization data |
+| ⚙️ **Settings Panel** | Mesh size, volume fraction, safety factor — all configurable |
 
-## 🏗️ Architecture Pipeline
+---
 
-The pipeline is built around a FastAPI backend serving various specialized agents:
-- `/api/interpret` → AI Requirement Interpreter
-- `/api/validate` → Engineering Spec Validator
-- `/api/generate-cad` → Parametric CAD Generator
-- `/api/run-fea` → Finite Element Analysis Pipeline (In Progress)
-- `/api/optimize` → Topology Optimization (In Progress)
+## 🏗️ Architecture
+
+```
+d:\finalyear\
+├── backend/
+│   ├── main.py                   # FastAPI app — all REST endpoints
+│   ├── config.py                 # Groq API key, model config
+│   ├── models/
+│   │   └── specification.py      # Pydantic DesignSpecification schema
+│   ├── interpreter/
+│   │   ├── llm_client.py         # Groq API wrapper (async, think-tag stripping)
+│   │   ├── parser.py             # NL → spec with dimension defaults
+│   │   └── prompt_templates.py   # System prompts for Llama/Qwen
+│   ├── validator/
+│   │   └── validator.py          # Physics rules validation
+│   ├── cad/
+│   │   └── generator.py          # CadQuery parametric models
+│   ├── fea/
+│   │   ├── mesher.py             # Gmsh tetrahedral mesher
+│   │   ├── solver.py             # C3D4 FEA solver
+│   │   ├── inp_generator.py      # CalculiX .inp file generator
+│   │   └── result_parser.py      # Stress/displacement extraction
+│   ├── optimization/
+│   │   └── simp.py               # SIMP topology optimization
+│   ├── orchestrator/
+│   │   ├── pipeline.py           # 7-stage pipeline orchestrator
+│   │   └── design_loop.py        # Autonomous redesign loop
+│   ├── reconstruction/
+│   │   └── pipeline.py           # Mesh → STEP reconstruction
+│   └── report/
+│       └── generator.py          # PDF report generation
+│
+└── frontend/
+    ├── src/
+    │   ├── App.jsx               # Main app — pipeline state machine
+    │   ├── api.js                # Dynamic API client (localStorage URL)
+    │   ├── index.css             # Cohere-inspired design system
+    │   └── components/
+    │       ├── RequirementInput.jsx   # NL prompt input
+    │       ├── SpecForm.jsx           # Editable spec fields
+    │       ├── PipelineStatus.jsx     # 7-step progress tracker
+    │       ├── ModelViewer.jsx        # Three.js STL viewer
+    │       ├── ResultsPanel.jsx       # FEA metrics + topo results
+    │       ├── HumanReview.jsx        # Approve / reject panel
+    │       ├── OptimizationHistory.jsx # Convergence chart
+    │       ├── ChatPanel.jsx          # AI assistant chatbot
+    │       ├── SettingsModal.jsx      # Config panel
+    │       └── TopoMeshView.jsx       # Topology mesh visualization
+```
+
+---
 
 ## 🛠️ Tech Stack
 
-- **Backend:** Python, FastAPI, Pydantic
-- **AI/LLM:** Groq API (Llama-3.3-70b-versatile)
-- **CAD Engine:** CadQuery
-- **3D Processing:** Open3D, Trimesh
-- **Simulation/Meshing:** Gmsh, SciPy, NumPy
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | Python 3.11, FastAPI 0.115, Uvicorn |
+| **AI / LLM** | Groq API — `qwen/qwen3.8-27b` (reasoning model) |
+| **CAD Engine** | CadQuery 2.4 |
+| **Meshing** | Gmsh 4.13 |
+| **FEA** | SciPy sparse solver (C3D4 tetrahedral) |
+| **Optimization** | NumPy SIMP (Solid Isotropic Material with Penalization) |
+| **3D Processing** | Open3D, Trimesh, scikit-image |
+| **Reports** | ReportLab PDF |
+| **Frontend** | React 18, Vite, Three.js (via @react-three/fiber) |
+| **Data Viz** | Recharts |
+| **Schema** | Pydantic v2 |
+
+---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Python 3.10+
-- CadQuery installed in your virtual environment.
+- Python 3.11+
+- Node.js 18+
+- A free [Groq API key](https://console.groq.com)
 
-### Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/jaiakash0786/Agentic_CAD.git
-   cd Agentic_CAD/backend
-   ```
-
-2. **Set up Virtual Environment:**
-   ```bash
-   python -m venv venv
-   # Windows: venv\Scripts\activate
-   # Linux/Mac: source venv/bin/activate
-   ```
-
-3. **Install Dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Environment Variables:**
-   Create a `.env` file in the `backend/` directory with your API keys:
-   ```env
-   GROQ_API_KEY=your_groq_api_key_here
-   GROQ_MODEL=llama-3.3-70b-versatile
-   ```
-
-### Running the Platform
-
-To start the FastAPI server:
-```bash
-python main.py
-```
-You can view the interactive API documentation and test the endpoints directly by navigating to **http://localhost:8000/docs**.
-
-### Running the Tests
-
-You can run the built-in test scripts to see the AI interpreter and CAD generator in action without starting the server:
+### 1. Clone
 
 ```bash
-# Test the AI Interpreter and Validator
-python test_phase2.py
-
-# Test the Parametric CAD Generator (outputs to output/cad/)
-python test_phase3.py
+git clone https://github.com/jaiakash0786/Agentic_CAD.git
+cd Agentic_CAD
 ```
 
-## 🤝 Next Phases (Roadmap)
-- [ ] Build the Pipeline Orchestrator to link all stages.
-- [ ] Implement automated FEA meshing and solving.
-- [ ] Implement Topology Optimization algorithms.
-- [ ] Create the React + Three.js Frontend.
+### 2. Backend Setup
+
+```bash
+cd backend
+
+# Create virtual environment
+python -m venv venv
+venv\Scripts\activate          # Windows
+# source venv/bin/activate     # Linux/Mac
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create environment file
+echo GROQ_API_KEY=your_key_here > .env
+echo GROQ_MODEL=qwen/qwen3.8-27b >> .env
+```
+
+### 3. Frontend Setup
+
+```bash
+cd frontend
+npm install
+```
+
+### 4. Run
+
+**Terminal 1 — Backend:**
+```bash
+cd backend
+venv\Scripts\activate
+uvicorn main:app --reload --port 8000
+```
+
+**Terminal 2 — Frontend:**
+```bash
+cd frontend
+npm run dev
+```
+
+Open **http://localhost:5173** in your browser.
 
 ---
-*Developed by Jaiakash*
+
+## 🔌 API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Backend health check |
+| `POST` | `/api/interpret` | NL → DesignSpecification |
+| `POST` | `/api/validate` | Validate spec against physics rules |
+| `POST` | `/api/generate-cad` | Generate STEP + STL files |
+| `POST` | `/api/run-fea` | Run FEA (mesh + solve + parse) |
+| `POST` | `/api/optimize` | SIMP topology optimization |
+| `POST` | `/api/generate-report` | Generate PDF report |
+| `GET` | `/api/materials` | List all available materials |
+| `GET` | `/files/{path}` | Serve generated files (STL, STEP, PDF) |
+
+---
+
+## 🎨 UI Design
+
+The frontend is inspired by **[Cohere's enterprise platform](https://cohere.com)** — warm off-white base, deep forest green accents, pill-shaped CTAs, and large rounded dark feature cards.
+
+---
+
+## 📋 Example Prompts
+
+```
+"Design an aluminum L-bracket 150mm long, 10kN downward load, safety factor ≥ 2"
+
+"Steel mounting bracket 200mm × 80mm, fixed at base, 5kN horizontal force, SF ≥ 3"
+
+"Aluminum beam 300mm long, 2kN vertical load at midpoint, max deflection 0.5mm"
+
+"Titanium support plate 200×150mm, 20kN compression, safety factor 4"
+```
+
+---
+
+## 👥 Developed By
+
+**Jaiakash** — Final Year Project, 2026
+
+---
+
+*Built with ❤️ using FastAPI, React, CadQuery, Groq AI, and lots of coffee.*
